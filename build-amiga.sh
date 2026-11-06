@@ -104,5 +104,11 @@ for p in kicad/kicad kicad/kicad-cli eeschema/eeschema pcbnew/pcbnew gerbview/ge
          pagelayout_editor/pl_editor bitmap2component/bitmap2component pcb_calculator/pcb_calculator; do
     [ -f "$B/$p" ] && cp "$B/$p" "$OUT/"
 done
+# what the programs read from PROGDIR:share/kicad: the toolbar and menu
+# images, the settings schemas and the new project template
+S="$OUT/share/kicad"; rm -rf "$S"; mkdir -p "$S/resources" "$S/schemas" "$S/template"
+cp "$B/resources/images.tar.gz" "$S/resources/"
+cp "$B"/schemas/*.json "$S/schemas/"
+cp "$WORK/kicad-src/resources/project_template/kicad.kicad_pro" "$S/template/"
 TC="$TC" BIN="$OUT" VERSION="$KICAD_RELEASE" OUT="$OUT" sh "$HERE/scripts/package.sh"
 step "done"

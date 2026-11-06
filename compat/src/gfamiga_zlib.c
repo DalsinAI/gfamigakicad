@@ -1,5 +1,6 @@
 /* zlib.h's calls through the system's z.library (GFOpenZlib, amicradle-guest
- * libraries/openzlib; LVOs and registers from its z.lvo), so nothing in
+ * libraries/openzlib; LVOs and registers from its z.lvo, which is the Aminet z.library's
+ * table from 53.13 on), so nothing in
  * KiCad's build carries a zlib of its own. The library is opened on first
  * use and closed at exit. Without z.library the stream and buffer calls
  * answer Z_MEM_ERROR, as zlib does when it can't get memory; the checksums
@@ -8,6 +9,7 @@
  * library is the version), so those zlib arguments are checked here.
  * Copyright (c) 2026 AmiCradle Team. MIT. */
 #include <stdlib.h>
+#include <string.h>
 #include <exec/types.h>
 #include <exec/libraries.h>
 #include <proto/exec.h>
@@ -15,6 +17,7 @@
 
 static struct Library* ZBase;
 static int             ZTried;
+static int             ZOwn;
 
 static void z_close( void )
 {
@@ -33,7 +36,25 @@ static struct Library* z_base( void )
         ZBase = OpenLibrary( (CONST_STRPTR) "z.library", 0 );
 
         if( ZBase )
-            atexit( z_close );
+        {
+            const char* id = (const char*) ZBase->lib_IdString;
+            int gf = id && strstr( id, "GFOpenZlib" ) != NULL;
+
+            /* GFOpenZlib before 53.13 had its own guessed jump table, not
+             * the Aminet z.library's that these LVOs follow: don't use it */
+            if( gf && ( ZBase->lib_Version < 53
+                        || ( ZBase->lib_Version == 53 && ZBase->lib_Revision < 13 ) ) )
+            {
+                CloseLibrary( ZBase );
+                ZBase = NULL;
+            }
+            else
+            {
+                /* the calls past -270 are GFOpenZlib's own */
+                ZOwn = gf;
+                atexit( z_close );
+            }
+        }
     }
 
     return ZBase;
@@ -219,6 +240,12 @@ static struct Library* z_base( void )
     if( !base )                                                                                    \
         return fail;
 
+/* a call only GFOpenZlib has (past the Aminet table) */
+#define OWN_OR( fail )                                                                             \
+    BASE_OR( fail )                                                                                \
+    if( !ZOwn )                                                                                    \
+        return fail;
+
 /* zlib's version and stream checks, made here since z.library takes neither */
 static int z_version_ok( const char* version, int stream_size )
 {
@@ -320,7 +347,7 @@ int deflateParams( z_streamp strm, int level, int strategy )
 int deflateTune( z_streamp strm, int good_length, int max_lazy, int nice_length, int max_chain )
 {
     BASE_OR( Z_STREAM_ERROR )
-    return (int) Z_A0D0D1D2D3( -102, strm, good_length, max_lazy, nice_length, max_chain );
+    return (int) Z_A0D0D1D2D3( -150, strm, good_length, max_lazy, nice_length, max_chain );
 }
 
 uLong deflateBound( z_streamp strm, uLong sourceLen )
@@ -330,25 +357,25 @@ uLong deflateBound( z_streamp strm, uLong sourceLen )
     if( !base ) /* zlib's own bound, only ever used to size a buffer */
         return sourceLen + ( sourceLen >> 12 ) + ( sourceLen >> 14 ) + ( sourceLen >> 25 ) + 13 + 6;
 
-    return (uLong) Z_A0D0( -108, strm, sourceLen );
+    return (uLong) Z_A0D0( -156, strm, sourceLen );
 }
 
 int deflatePending( z_streamp strm, unsigned* pending, int* bits )
 {
-    BASE_OR( Z_STREAM_ERROR )
-    return (int) Z_A0A1A2( -114, strm, pending, bits );
+    OWN_OR( Z_STREAM_ERROR )
+    return (int) Z_A0A1A2( -276, strm, pending, bits );
 }
 
 int deflatePrime( z_streamp strm, int bits, int value )
 {
     BASE_OR( Z_STREAM_ERROR )
-    return (int) Z_A0D0D1( -120, strm, bits, value );
+    return (int) Z_A0D0D1( -162, strm, bits, value );
 }
 
 int deflateSetHeader( z_streamp strm, gz_headerp head )
 {
     BASE_OR( Z_STREAM_ERROR )
-    return (int) Z_A0A1( -126, strm, head );
+    return (int) Z_A0A1( -168, strm, head );
 }
 
 int inflateInit2_( z_streamp strm, int windowBits, const char* version, int stream_size )
@@ -360,63 +387,63 @@ int inflateInit2_( z_streamp strm, int windowBits, const char* version, int stre
         return Z_STREAM_ERROR;
 
     BASE_OR( Z_MEM_ERROR )
-    return (int) Z_A0D0( -132, strm, windowBits );
+    return (int) Z_A0D0( -102, strm, windowBits );
 }
 
 int inflateSetDictionary( z_streamp strm, const Bytef* dictionary, uInt dictLength )
 {
     BASE_OR( Z_STREAM_ERROR )
-    return (int) Z_A0A1D0( -138, strm, dictionary, dictLength );
+    return (int) Z_A0A1D0( -108, strm, dictionary, dictLength );
 }
 
 int inflateGetDictionary( z_streamp strm, Bytef* dictionary, uInt* dictLength )
 {
     BASE_OR( Z_STREAM_ERROR )
-    return (int) Z_A0A1A2( -144, strm, dictionary, dictLength );
+    return (int) Z_A0A1A2( -234, strm, dictionary, dictLength );
 }
 
 int inflateSync( z_streamp strm )
 {
     BASE_OR( Z_STREAM_ERROR )
-    return (int) Z_A0( -150, strm );
+    return (int) Z_A0( -144, strm );
 }
 
 int inflateCopy( z_streamp dest, z_streamp source )
 {
     BASE_OR( Z_STREAM_ERROR )
-    return (int) Z_A0A1( -156, dest, source );
+    return (int) Z_A0A1( -174, dest, source );
 }
 
 int inflateReset( z_streamp strm )
 {
     BASE_OR( Z_STREAM_ERROR )
-    return (int) Z_A0( -162, strm );
+    return (int) Z_A0( -114, strm );
 }
 
 int inflateReset2( z_streamp strm, int windowBits )
 {
     BASE_OR( Z_STREAM_ERROR )
-    return (int) Z_A0D0( -168, strm, windowBits );
+    return (int) Z_A0D0( -252, strm, windowBits );
 }
 
 int inflatePrime( z_streamp strm, int bits, int value )
 {
     BASE_OR( Z_STREAM_ERROR )
-    return (int) Z_A0D0D1( -174, strm, bits, value );
+    return (int) Z_A0D0D1( -180, strm, bits, value );
 }
 
 long inflateMark( z_streamp strm )
 {
-    BASE_OR( -( 1L << 16 ) )
-    return (long) Z_A0( -180, strm );
+    OWN_OR( -( 1L << 16 ) )
+    return (long) Z_A0( -282, strm );
 }
 
 /* z.library always checks the check value; turning the check off is a
  * request zlib may refuse too, so it is answered as done */
 int inflateValidate( z_streamp strm, int check )
 {
-    (void) check;
-    return strm ? Z_OK : Z_STREAM_ERROR;
+    BASE_OR( Z_STREAM_ERROR )
+    return (int) Z_A0D0( -258, strm, check );
 }
 
 int inflateGetHeader( z_streamp strm, gz_headerp head )
@@ -427,20 +454,20 @@ int inflateGetHeader( z_streamp strm, gz_headerp head )
 
 uLong zlibCompileFlags( void )
 {
-    BASE_OR( 0 )
-    return (uLong) Z_NONE( -192 );
+    OWN_OR( 0 )
+    return (uLong) Z_NONE( -288 );
 }
 
 int compress( Bytef* dest, uLongf* destLen, const Bytef* source, uLong sourceLen )
 {
     BASE_OR( Z_MEM_ERROR )
-    return (int) Z_A0A1A2D0( -198, dest, destLen, source, sourceLen );
+    return (int) Z_A0A1A2D0( -120, dest, destLen, source, sourceLen );
 }
 
 int compress2( Bytef* dest, uLongf* destLen, const Bytef* source, uLong sourceLen, int level )
 {
     BASE_OR( Z_MEM_ERROR )
-    return (int) Z_A0A1A2D0D1( -204, dest, destLen, source, sourceLen, level );
+    return (int) Z_A0A1A2D0D1( -222, dest, destLen, source, sourceLen, level );
 }
 
 uLong compressBound( uLong sourceLen )
@@ -450,19 +477,19 @@ uLong compressBound( uLong sourceLen )
     if( !base )
         return sourceLen + ( sourceLen >> 12 ) + ( sourceLen >> 14 ) + ( sourceLen >> 25 ) + 13;
 
-    return (uLong) Z_D0( -210, sourceLen );
+    return (uLong) Z_D0( -228, sourceLen );
 }
 
 int uncompress( Bytef* dest, uLongf* destLen, const Bytef* source, uLong sourceLen )
 {
     BASE_OR( Z_MEM_ERROR )
-    return (int) Z_A0A1A2D0( -216, dest, destLen, source, sourceLen );
+    return (int) Z_A0A1A2D0( -126, dest, destLen, source, sourceLen );
 }
 
 int uncompress2( Bytef* dest, uLongf* destLen, const Bytef* source, uLong* sourceLen )
 {
     BASE_OR( Z_MEM_ERROR )
-    return (int) Z_A0A1A2A3( -222, dest, destLen, source, sourceLen );
+    return (int) Z_A0A1A2A3( -246, dest, destLen, source, sourceLen );
 }
 
 /* the checksums: z.library's, or computed here without it */
@@ -515,12 +542,12 @@ uLong adler32_z( uLong adler, const Bytef* buf, z_size_t len )
 
     while( len > 0x40000000UL )
     {
-        adler = (uLong) Z_D0A0D1( -228, adler, buf, 0x40000000UL );
+        adler = (uLong) Z_D0A0D1( -132, adler, buf, 0x40000000UL );
         buf += 0x40000000UL;
         len -= 0x40000000UL;
     }
 
-    return (uLong) Z_D0A0D1( -228, adler, buf, len );
+    return (uLong) Z_D0A0D1( -132, adler, buf, len );
 }
 
 uLong adler32( uLong adler, const Bytef* buf, uInt len )
@@ -540,12 +567,12 @@ uLong crc32_z( uLong crc, const Bytef* buf, z_size_t len )
 
     while( len > 0x40000000UL )
     {
-        crc = (uLong) Z_D0A0D1( -234, crc, buf, 0x40000000UL );
+        crc = (uLong) Z_D0A0D1( -138, crc, buf, 0x40000000UL );
         buf += 0x40000000UL;
         len -= 0x40000000UL;
     }
 
-    return (uLong) Z_D0A0D1( -234, crc, buf, len );
+    return (uLong) Z_D0A0D1( -138, crc, buf, len );
 }
 
 uLong crc32( uLong crc, const Bytef* buf, uInt len )
@@ -556,19 +583,19 @@ uLong crc32( uLong crc, const Bytef* buf, uInt len )
 uLong adler32_combine( uLong adler1, uLong adler2, z_off_t len2 )
 {
     BASE_OR( 0xffffffffUL )
-    return (uLong) Z_D0D1D2( -240, adler1, adler2, len2 );
+    return (uLong) Z_D0D1D2( -210, adler1, adler2, len2 );
 }
 
 uLong crc32_combine( uLong crc1, uLong crc2, z_off_t len2 )
 {
     BASE_OR( 0 )
-    return (uLong) Z_D0D1D2( -246, crc1, crc2, len2 );
+    return (uLong) Z_D0D1D2( -216, crc1, crc2, len2 );
 }
 
 int deflateGetDictionary( z_streamp strm, Bytef* dictionary, uInt* dictLength )
 {
-    BASE_OR( Z_STREAM_ERROR )
-    return (int) Z_A0A1A2( -252, strm, dictionary, dictLength );
+    OWN_OR( Z_STREAM_ERROR )
+    return (int) Z_A0A1A2( -294, strm, dictionary, dictLength );
 }
 
 const char* zError( int err )

@@ -497,6 +497,34 @@ index 39e976b9..be106671 100644
      // Install a temporary SIGABRT handler to recover from abort() calls triggered by
      // buggy 3Dconnexion drivers. The driver on some macOS versions calls std::terminate()
      // from a noexcept context inside NlCreate, which calls abort(). By catching SIGABRT
+diff --git a/common/paths.cpp b/common/paths.cpp
+index 8b7a93d6..3012bedf 100644
+--- a/common/paths.cpp
++++ b/common/paths.cpp
+@@ -259,6 +259,9 @@ wxString PATHS::GetStockDataPath( bool aRespectRunFromBuildDir )
+         path = GetOSXKicadDataDir();
+ #elif defined( __WXMSW__ )
+         path = getWindowsKiCadRoot() + wxT( "share/kicad" );
++#elif defined( KICAD_AMIGA )
++        // beside the program: share/kicad in the drawer it was started from
++        path = wxT( "PROGDIR:share/kicad" );
+ #else
+         path = wxString::FromUTF8Unchecked( KICAD_DATA );
+ #endif
+@@ -289,8 +292,13 @@ wxString PATHS::GetStockEDALibraryPath()
+ #else
+     if( wxGetEnv( wxT( "APPDIR" ), &path ) )
+         path += wxT( "/share/kicad" );
++#ifdef KICAD_AMIGA
++    else
++        path = wxT( "PROGDIR:share/kicad" );
++#else
+     else
+         path = wxString::FromUTF8Unchecked( KICAD_LIBRARY_DATA );
++#endif
+ #endif
+ 
+     return path;
 diff --git a/common/plotters/PDF_plotter.cpp b/common/plotters/PDF_plotter.cpp
 index 4bd648e3..9691cb80 100644
 --- a/common/plotters/PDF_plotter.cpp

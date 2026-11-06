@@ -11,6 +11,7 @@ mkdir -p "$D/Programs"
 for p in kicad kicad-cli eeschema pcbnew gerbview pl_editor bitmap2component pcb_calculator; do
     [ -f "$BIN/$p" ] && "$TC/bin/m68k-amigaos-strip" -o "$D/Programs/$p" "$BIN/$p"
 done
+[ -d "$BIN/share" ] && cp -r "$BIN/share" "$D/Programs/"
 cat > "$D/ReadMe.txt" <<TXT
 GFAmigaKiCad $VERSION
 KiCad 10.0.8 for AmigaOS 3.2, 68040, on the GFOpenWX Toolkit.
@@ -45,7 +46,7 @@ ENDIF
 IF NOT EXISTS "$kcdest"
     MakeDir "$kcdest" ALL
 ENDIF
-Copy Programs/#? "$kcdest" CLONE QUIET
+Copy Programs/#? "$kcdest" ALL CLONE QUIET
 Copy ReadMe.txt "$kcdest" CLONE QUIET
 Echo "GFAmigaKiCad is in $kcdest"
 UnSet kcdest
