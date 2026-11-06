@@ -306,6 +306,75 @@ index 0144ac4f..e8569968 100644
      # On Windows/MacOS, the SpaceMouse support is provided by the navlib subdirectory
      message( STATUS "Including 3Dconnexion SpaceMouse navigation support in pcbcommon" )
      add_subdirectory( ../pcbnew/navlib ./navlib)
+diff --git a/common/asset_archive.cpp b/common/asset_archive.cpp
+index cc2a7c8f..3471e6bc 100644
+--- a/common/asset_archive.cpp
++++ b/common/asset_archive.cpp
+@@ -23,6 +23,14 @@
+ 
+ #include <asset_archive.h>
+ 
++#ifdef KICAD_AMIGA
++#include <cstdio>
++extern void KicadAmigaStep( const char* aWhere );
++#define AMIGA_MARK( x ) KicadAmigaStep( x )
++#else
++#define AMIGA_MARK( x )
++#endif
++
+ 
+ ASSET_ARCHIVE::ASSET_ARCHIVE( const wxString& aFilePath, bool aLoadNow ) :
+         m_filePath( aFilePath )
+@@ -38,19 +46,27 @@ bool ASSET_ARCHIVE::Load()
+     if( !m_fileInfoCache.empty() )
+         return false;
+ 
++    AMIGA_MARK( "asset open" );
+     wxFFileInputStream zipFile( m_filePath );
++    AMIGA_MARK( "asset opened" );
+ 
+     if( !zipFile.IsOk() )
+         return false;
+ 
+     wxZlibInputStream stream( zipFile, wxZLIB_GZIP );
++    AMIGA_MARK( "asset zlib made" );
+     wxTarInputStream tarStream( stream );
+     wxTarEntry* entry;
++    AMIGA_MARK( "asset tar made" );
+ 
+     // Avoid realloc while reading: we're not going to get better than 2:1 compression
+     m_cache.resize( 2 * zipFile.GetLength() );
+ 
+     size_t offset = 0;
++    AMIGA_MARK( "asset cache sized" );
++#ifdef KICAD_AMIGA
++    int amigaCount = 0;
++#endif
+ 
+     while( ( entry = tarStream.GetNextEntry() ) != nullptr )
+     {
+@@ -74,11 +90,21 @@ bool ASSET_ARCHIVE::Load()
+         m_fileInfoCache[entry->GetName()] = fi;
+ 
+         offset += length;
++#ifdef KICAD_AMIGA
++        if( ( ++amigaCount % 200 ) == 1 )
++        {
++            char amigaBuf[200];
++            std::snprintf( amigaBuf, sizeof( amigaBuf ), "asset entry %d %lu %s", amigaCount,
++                           (unsigned long) offset, (const char*) entry->GetName().utf8_str() );
++            AMIGA_MARK( amigaBuf );
++        }
++#endif
+ 
+         delete entry;
+     }
+ 
+     m_cache.resize( offset );
++    AMIGA_MARK( "asset loaded" );
+ 
+     return true;
+ }
 diff --git a/common/bitmap.cpp b/common/bitmap.cpp
 index d2dcd483..d1373aa5 100644
 --- a/common/bitmap.cpp
