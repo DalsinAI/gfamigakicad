@@ -306,6 +306,35 @@ index 0144ac4f..e8569968 100644
      # On Windows/MacOS, the SpaceMouse support is provided by the navlib subdirectory
      message( STATUS "Including 3Dconnexion SpaceMouse navigation support in pcbcommon" )
      add_subdirectory( ../pcbnew/navlib ./navlib)
+diff --git a/common/bitmap.cpp b/common/bitmap.cpp
+index d2dcd483..d1373aa5 100644
+--- a/common/bitmap.cpp
++++ b/common/bitmap.cpp
+@@ -45,6 +45,13 @@
+ #include <kiplatform/ui.h>
+ #include <math/util.h>
+ #include <settings/common_settings.h>
++#ifdef KICAD_AMIGA
++extern void KicadAmigaStep( const char* aWhere );
++#define AMIGA_MARK( x ) KicadAmigaStep( x )
++#else
++#define AMIGA_MARK( x )
++#endif
++
+ 
+ static std::unique_ptr<BITMAP_STORE> s_BitmapStore;
+ 
+@@ -91,8 +98,10 @@ static std::mutex s_BitmapCacheMutex;
+ 
+ BITMAP_STORE* GetBitmapStore()
+ {
++    AMIGA_MARK( "bmp 93" );
+     if( !s_BitmapStore )
+     {
++        AMIGA_MARK( "bmp store new" );
+         wxFileName path( PATHS::GetStockDataPath() + wxT( "/resources" ), wxT( "images.zip" ) );
+         s_BitmapStore = std::make_unique<BITMAP_STORE>();
+     }
 diff --git a/common/bitmap_base.cpp b/common/bitmap_base.cpp
 index f1d84d4e..5e7e3576 100644
 --- a/common/bitmap_base.cpp
@@ -349,6 +378,74 @@ index f1d84d4e..5e7e3576 100644
      else
      {
          aDC->SetUserScale( scale, scale );
+diff --git a/common/bitmap_store.cpp b/common/bitmap_store.cpp
+index 5a21691b..0f1f76ef 100644
+--- a/common/bitmap_store.cpp
++++ b/common/bitmap_store.cpp
+@@ -36,6 +36,13 @@
+ #include <paths.h>
+ #include <pgm_base.h>
+ #include <settings/common_settings.h>
++#ifdef KICAD_AMIGA
++extern void KicadAmigaStep( const char* aWhere );
++#define AMIGA_MARK( x ) KicadAmigaStep( x )
++#else
++#define AMIGA_MARK( x )
++#endif
++
+ 
+ 
+ /// A question-mark icon shown when we can't find a given bitmap in the archive
+@@ -107,15 +114,21 @@ size_t std::hash<std::pair<BITMAPS, int>>::operator()( const std::pair<BITMAPS,
+ BITMAP_STORE::BITMAP_STORE() :
+     m_theme( BITMAP_INFO::THEME::LIGHT )
+ {
++    AMIGA_MARK( "store 109" );
+     wxFileName path( PATHS::GetStockDataPath() + wxT( "/resources" ), IMAGE_ARCHIVE );
++    AMIGA_MARK( "store 110" );
+ 
+     wxLogTrace( traceBitmaps, "Loading bitmaps from " + path.GetFullPath() );
++    AMIGA_MARK( "store 112" );
+ 
+     m_archive = std::make_unique<ASSET_ARCHIVE>( path.GetFullPath() );
++    AMIGA_MARK( "store 114" );
+ 
+     buildBitmapInfoCache();
++    AMIGA_MARK( "store 116" );
+ 
+     ThemeChanged();
++    AMIGA_MARK( "store 118" );
+ }
+ 
+ 
+@@ -127,7 +140,9 @@ wxBitmap BITMAP_STORE::GetBitmap( BITMAPS aBitmapId, int aHeight )
+ 
+ wxBitmapBundle BITMAP_STORE::GetBitmapBundle( BITMAPS aBitmapId, int aMinHeight )
+ {
++    AMIGA_MARK( "store 129" );
+     wxVector<wxBitmap> bmps;
++    AMIGA_MARK( "store 130" );
+ 
+     for( const BITMAP_INFO& info : m_bitmapInfoCache[aBitmapId] )
+     {
+@@ -390,7 +405,9 @@ wxImage BITMAP_STORE::getImage( BITMAPS aBitmapId, int aHeight )
+ 
+ void BITMAP_STORE::ThemeChanged()
+ {
++    AMIGA_MARK( "store 392" );
+     BITMAP_INFO::THEME oldTheme = m_theme;
++    AMIGA_MARK( "store 393" );
+ 
+     if( COMMON_SETTINGS* settings = Pgm().GetCommonSettings() )
+     {
+@@ -457,5 +474,7 @@ wxString BITMAP_STORE::computeBitmapName( BITMAPS aBitmapId, int aHeight )
+ 
+ void BITMAP_STORE::buildBitmapInfoCache()
+ {
++    AMIGA_MARK( "store 459" );
+     BuildBitmapInfo( m_bitmapInfoCache );
++    AMIGA_MARK( "store 460" );
+ }
 diff --git a/common/build_version.cpp b/common/build_version.cpp
 index f8218e38..f65ebdd2 100644
 --- a/common/build_version.cpp
@@ -1574,7 +1671,7 @@ index 9478e2db..fe1c4116 100644
  wxGetContentRect(wxSize contentSize,
                   const wxRect& cellRect,
 diff --git a/common/widgets/kistatusbar.cpp b/common/widgets/kistatusbar.cpp
-index 0269f006..76e36035 100644
+index 0269f006..1e1ca28f 100644
 --- a/common/widgets/kistatusbar.cpp
 +++ b/common/widgets/kistatusbar.cpp
 @@ -42,6 +42,13 @@
@@ -1616,7 +1713,54 @@ index 0269f006..76e36035 100644
  
      if( showCancel )
          extraFields++;
-@@ -145,23 +158,33 @@ KISTATUSBAR::KISTATUSBAR( int aNumberFields, wxWindow* parent, wxWindowID id, ST
+@@ -105,37 +118,46 @@ KISTATUSBAR::KISTATUSBAR( int aNumberFields, wxWindow* parent, wxWindowID id, ST
+     if( showNotification )
+         extraFields++;
+ 
++    AMIGA_MARK( "sbar text" );
+     m_backgroundTxt = new wxStaticText( this, wxID_ANY, wxT( "" ), wxDefaultPosition,
+                                         wxDefaultSize, wxALIGN_RIGHT | wxST_NO_AUTORESIZE );
+ 
++    AMIGA_MARK( "sbar gauge" );
+     m_backgroundProgressBar = new wxGauge( this, wxID_ANY, 100, wxDefaultPosition, wxDefaultSize,
+                                            wxGA_HORIZONTAL | wxGA_SMOOTH );
+ 
++    AMIGA_MARK( "sbar cancel" );
+     if( showCancel )
+     {
+         m_backgroundStopButton = new wxButton( this, wxID_ANY, "X", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT );
+     }
+ 
++    AMIGA_MARK( "sbar notify" );
+     if( showNotification )
+     {
+         m_notificationsButton = new BITMAP_BUTTON( this, wxID_ANY, wxNullBitmap, wxDefaultPosition,
+                                                    wxDefaultSize, wxBU_EXACTFIT );
+ 
++        AMIGA_MARK( "sbar notify btn made" );
+         m_notificationsButton->SetPadding( 0 );
+         m_notificationsButton->SetBitmap( KiBitmapBundle( BITMAPS::notifications ) );
++        AMIGA_MARK( "sbar notify bitmap set" );
+         m_notificationsButton->SetShowBadge( true );
+         m_notificationsButton->SetBitmapCentered( true );
+ 
+         m_notificationsButton->Bind( wxEVT_BUTTON, &KISTATUSBAR::onNotificationsIconClick, this );
+     }
+ 
++    AMIGA_MARK( "sbar warning" );
+     if( showWarning )
+     {
+         m_warningButton = new BITMAP_BUTTON( this, wxID_ANY, wxNullBitmap, wxDefaultPosition,
+                                              wxDefaultSize, wxBU_EXACTFIT );
+ 
++        AMIGA_MARK( "sbar warn btn made" );
+         m_warningButton->SetPadding( 0 );
+         m_warningButton->SetBitmap( KiBitmapBundle( BITMAPS::small_warning ) );
++        AMIGA_MARK( "sbar warn bitmap set" );
+         m_warningButton->SetBitmapCentered( true );
+         m_warningButton->SetToolTip( _( "View load messages" ) );
+         m_warningButton->Hide();
+@@ -145,23 +167,33 @@ KISTATUSBAR::KISTATUSBAR( int aNumberFields, wxWindow* parent, wxWindowID id, ST
      }
  
      m_fieldWidths.assign( aNumberFields + extraFields, -1 );
