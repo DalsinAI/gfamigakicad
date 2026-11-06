@@ -525,6 +525,203 @@ index 8b7a93d6..3012bedf 100644
  #endif
  
      return path;
+diff --git a/common/pgm_base.cpp b/common/pgm_base.cpp
+index 689c6de5..f998c503 100644
+--- a/common/pgm_base.cpp
++++ b/common/pgm_base.cpp
+@@ -328,27 +328,52 @@ void PGM_BASE::HideSplash()
+ }
+ 
+ 
++
++#ifdef KICAD_AMIGA
++#include <cstdio>
++#include <cstdlib>
++// start-up markers on stderr when KICAD_AMIGA_STEPS is set
++static void AMIGA_STEP( const char* aWhere )
++{
++    if( std::getenv( "KICAD_AMIGA_STEPS" ) )
++    {
++        std::fprintf( stderr, "step %s\n", aWhere );
++        std::fflush( stderr );
++    }
++}
++#else
++#define AMIGA_STEP( x )
++#endif
++
+ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+ {
+ #if defined( __WXMAC__ )
+     // Set the application locale to the system default
+     wxLogNull noLog;
++    AMIGA_STEP( "pgm 335" );
+     wxLocale loc;
++    AMIGA_STEP( "pgm 336" );
+     loc.Init();
++    AMIGA_STEP( "pgm 337" );
+ #endif
+ 
+     // Just make sure we init precreate any folders early for later code
+     // In particular, the user cache path is the most likely to be hit by startup code
+     PATHS::EnsureUserPathsExist();
++    AMIGA_STEP( "pgm 342" );
+ 
+     KICAD_CURL::Init();
++    AMIGA_STEP( "pgm 344" );
+ 
+     APP_MONITOR::SENTRY::Instance()->Init();
++    AMIGA_STEP( "pgm 346" );
+ 
+     // Initialize the singleton instance
+     m_singleton.Init();
++    AMIGA_STEP( "pgm 349" );
+ 
+     wxString pgm_name;
++    AMIGA_STEP( "pgm 351" );
+ 
+     /// Should never happen but boost unit_test isn't playing nicely in some cases
+     if( App().argc == 0 )
+@@ -357,12 +382,15 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+         pgm_name = wxFileName( App().argv[0] ).GetName().Lower();
+ 
+     APP_MONITOR::SENTRY::Instance()->AddTag( "kicad.app", pgm_name );
++    AMIGA_STEP( "pgm 359" );
+ 
+     wxInitAllImageHandlers();
++    AMIGA_STEP( "pgm 361" );
+ 
+     // libpng warnings such as "iCCP: known incorrect sRGB profile" otherwise pop up for
+     // benign plugin and user images; load failures are still reported by the callers
+     wxImage::SetDefaultLoadFlags( wxImage::GetDefaultLoadFlags() & ~wxImage::Load_Verbose );
++    AMIGA_STEP( "pgm 365" );
+ 
+ #if !wxCHECK_VERSION( 3, 3, 0 )
+     // Without this the wxPropertyGridManager segfaults on Windows.
+@@ -384,7 +412,9 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+     // multi-user machine, other need to be able to access it to check for the lock files or make
+     // their own lock files.
+     wxString instanceCheckerDir = PATHS::GetInstanceCheckerPath();
++    AMIGA_STEP( "pgm 386" );
+     PATHS::EnsurePathExists( instanceCheckerDir );
++    AMIGA_STEP( "pgm 387" );
+     wxChmod( instanceCheckerDir,
+              wxPOSIX_USER_READ | wxPOSIX_USER_WRITE | wxPOSIX_USER_EXECUTE |
+              wxPOSIX_GROUP_READ | wxPOSIX_GROUP_WRITE | wxPOSIX_GROUP_EXECUTE |
+@@ -394,12 +424,15 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+                                                      GetMajorMinorVersion() );
+ 
+     m_pgm_checker = std::make_unique<wxSingleInstanceChecker>();
++    AMIGA_STEP( "pgm 396" );
+     m_pgm_checker->Create( instanceCheckerName, instanceCheckerDir );
++    AMIGA_STEP( "pgm 397" );
+ 
+     // Init KiCad environment
+     // the environment variable KICAD (if exists) gives the kicad path:
+     // something like set KICAD=d:\kicad
+     bool isDefined = wxGetEnv( wxT( "KICAD" ), &m_kicad_env );
++    AMIGA_STEP( "pgm 402" );
+ 
+     if( isDefined )    // ensure m_kicad_env ends by "/"
+     {
+@@ -411,7 +444,9 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+ 
+     // Init parameters for configuration
+     App().SetVendorName(  wxT( "KiCad" ) );
++    AMIGA_STEP( "pgm 413" );
+     App().SetAppName( pgm_name );
++    AMIGA_STEP( "pgm 414" );
+ 
+ #if wxCHECK_VERSION( 3, 3, 1 ) && defined( __WXGTK__ ) && defined( KICAD_DESKTOP_APP_NAME )
+     // wxGTK feeds the class name to gdk_wayland_window_set_application_id(), so setting it
+@@ -420,6 +455,7 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+     // and is supplied by CMake. The main manager keeps the bare app name; the other GUI apps
+     // are prefixed. Executables without a desktop file (pl_editor, kicad-cli) are left alone.
+     wxString desktopId;
++    AMIGA_STEP( "pgm 422" );
+ 
+     if( pgm_name == wxT( "kicad" ) )
+     {
+@@ -440,8 +476,11 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+ 
+     // Analyze the command line & initialize the binary path
+     wxString tmp;
++    AMIGA_STEP( "pgm 442" );
+     SetLanguagePath();
++    AMIGA_STEP( "pgm 443" );
+     SetDefaultLanguage( tmp );
++    AMIGA_STEP( "pgm 444" );
+ 
+ #ifdef _MSC_VER
+     if( !wxGetEnv( "FONTCONFIG_PATH", NULL ) )
+@@ -456,15 +495,21 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+ 
+ #ifdef _MSC_VER
+     winrt::init_apartment(winrt::apartment_type::single_threaded);
++    AMIGA_STEP( "pgm 458" );
+ #endif
+ 
+     m_settings_manager = std::make_unique<SETTINGS_MANAGER>();
++    AMIGA_STEP( "pgm 461" );
+     m_library_manager = std::make_unique<LIBRARY_MANAGER>();
++    AMIGA_STEP( "pgm 462" );
+     m_background_jobs_monitor = std::make_unique<BACKGROUND_JOBS_MONITOR>();
++    AMIGA_STEP( "pgm 463" );
+     m_notifications_manager = std::make_unique<NOTIFICATIONS_MANAGER>();
++    AMIGA_STEP( "pgm 464" );
+ 
+ #ifdef KICAD_IPC_API
+     m_plugin_manager = std::make_unique<API_PLUGIN_MANAGER>( &App() );
++    AMIGA_STEP( "pgm 467" );
+ #endif
+ 
+     // Our unit test mocks break if we continue
+@@ -479,13 +524,17 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+ 
+     // Set up built-in environment variables (and override them from the system environment if set)
+     COMMON_SETTINGS* commonSettings = GetCommonSettings();
++    AMIGA_STEP( "pgm 481" );
+     commonSettings->InitializeEnvironment();
++    AMIGA_STEP( "pgm 482" );
+ 
+     // Load color settings after env is initialized
+     m_settings_manager->ReloadColorSettings();
++    AMIGA_STEP( "pgm 485" );
+ 
+     // Load common settings from disk after setting up env vars
+     GetSettingsManager().Load( commonSettings );
++    AMIGA_STEP( "pgm 488" );
+ 
+ #ifdef KICAD_IPC_API
+     // If user doesn't have a saved Python interpreter, try (potentially again) to find one
+@@ -497,15 +546,19 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+     // env vars could be incorrectly initialized on Linux
+     // (if the value contains some non ASCII7 chars, the env var is not initialized)
+     SetLanguage( tmp, true );
++    AMIGA_STEP( "pgm 499" );
+ 
+     // Now that translations are available, inform the user if the OS is unsupported
+     WarnUserIfOperatingSystemUnsupported();
++    AMIGA_STEP( "pgm 502" );
+ 
+     loadCommonSettings();
++    AMIGA_STEP( "pgm 504" );
+ 
+     ReadPdfBrowserInfos();      // needs GetCommonSettings()
+ 
+     GetNotificationsManager().Load();
++    AMIGA_STEP( "pgm 508" );
+ 
+     // Create the python scripting stuff
+     // Skip it for applications that do not use it
+@@ -515,6 +568,7 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+     // TODO(JE): Remove this if apps are refactored to not assume Prj() always works
+     // Need to create a project early for now (it can have an empty path for the moment)
+     GetSettingsManager().LoadProject( "" );
++    AMIGA_STEP( "pgm 517" );
+ 
+ #ifdef KICAD_IPC_API
+     if( commonSettings->m_Api.enable_server )
 diff --git a/common/plotters/PDF_plotter.cpp b/common/plotters/PDF_plotter.cpp
 index 4bd648e3..9691cb80 100644
 --- a/common/plotters/PDF_plotter.cpp
@@ -769,7 +966,7 @@ index ec1662bb..5804ac99 100644
      if( hasVisibleGlyph && !run.m_bytes.empty() )
          aRuns->push_back( std::move( run ) );
 diff --git a/common/single_top.cpp b/common/single_top.cpp
-index 47e07280..4b36202a 100644
+index 47e07280..ca827d6a 100644
 --- a/common/single_top.cpp
 +++ b/common/single_top.cpp
 @@ -34,7 +34,13 @@
@@ -786,6 +983,166 @@ index 47e07280..4b36202a 100644
  #include <wx/cmdline.h>
  #include <wx/dialog.h>
  #include <wx/filename.h>
+@@ -336,10 +342,28 @@ struct APP_SINGLE_TOP : public wxApp
+ IMPLEMENT_APP( APP_SINGLE_TOP )
+ 
+ 
++
++#ifdef KICAD_AMIGA
++#include <cstdio>
++#include <cstdlib>
++// start-up markers on stderr when KICAD_AMIGA_STEPS is set
++static void AMIGA_STEP( const char* aWhere )
++{
++    if( std::getenv( "KICAD_AMIGA_STEPS" ) )
++    {
++        std::fprintf( stderr, "step %s\n", aWhere );
++        std::fflush( stderr );
++    }
++}
++#else
++#define AMIGA_STEP( x )
++#endif
++
+ bool PGM_SINGLE_TOP::OnPgmInit()
+ {
+ #if defined(DEBUG)
+     wxString absoluteArgv0 = wxStandardPaths::Get().GetExecutablePath();
++    AMIGA_STEP( "top 348" );
+ 
+     if( !wxIsAbsolutePath( absoluteArgv0 ) )
+     {
+@@ -350,6 +374,7 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+ 
+     // Initialize the git library before trying to initialize individual programs
+     int gitInit = git_libgit2_init();
++    AMIGA_STEP( "top 358" );
+ 
+     if( gitInit < 0 )
+     {
+@@ -366,10 +391,12 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+     // Not all KiCad applications use the python stuff. skip python init
+     // for these apps.
+     bool skip_python_initialization = false;
++    AMIGA_STEP( "top 374" );
+ 
+ #if defined( BITMAP_2_CMP ) || defined( PL_EDITOR ) || defined( GERBVIEW ) || \
+     defined( PCB_CALCULATOR_BUILD )
+     skip_python_initialization = true;
++    AMIGA_STEP( "top 378" );
+ #endif
+ 
+     if( !InitPgm( false, skip_python_initialization ) )
+@@ -387,21 +414,27 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+ 
+     // Get the getter, it is statically linked into this binary image.
+     KIFACE_GETTER_FUNC* ki_getter = &KIFACE_GETTER;
++    AMIGA_STEP( "top 395" );
+ 
+     int  kiface_version;
++    AMIGA_STEP( "top 397" );
+ 
+     // Get the KIFACE.
+     KIFACE* kiface = ki_getter( &kiface_version, KIFACE_VERSION, this );
++    AMIGA_STEP( "top 400" );
+ 
+     // Trick the KIWAY into thinking it loaded a KIFACE, by recording the KIFACE
+     // in the KIWAY.  It needs to be there for KIWAY::OnKiwayEnd() anyways.
+     Kiway.set_kiface( KIWAY::KifaceType( TOP_FRAME ), kiface );
++    AMIGA_STEP( "top 404" );
+ #endif
+ 
+     // Tell the settings manager about the current Kiway
+     GetSettingsManager().SetKiway( &Kiway );
++    AMIGA_STEP( "top 408" );
+ 
+     GetSettingsManager().RegisterSettings( new KICAD_SETTINGS );
++    AMIGA_STEP( "top 410" );
+ 
+ 
+     if( const COMMON_SETTINGS* cfg = Pgm().GetCommonSettings() )
+@@ -415,12 +448,14 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+ #ifdef KICAD_IPC_API
+     // Create the API server thread once the app event loop exists
+     m_api_server = std::make_unique<KICAD_API_SERVER>();
++    AMIGA_STEP( "top 423" );
+ #endif
+ 
+     // Use KIWAY to create a top window, which registers its existence also.
+     // "TOP_FRAME" is a macro that is passed on compiler command line from CMake,
+     // and is one of the types in FRAME_T.
+     KIWAY_PLAYER* frame = Kiway.Player( TOP_FRAME, true );
++    AMIGA_STEP( "top 429" );
+ 
+     if( frame == nullptr )
+     {
+@@ -430,30 +465,42 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+     }
+ 
+     Kiway.SetTop( frame );
++    AMIGA_STEP( "top 438" );
+ 
+     STARTWIZARD startWizard;
++    AMIGA_STEP( "top 440" );
+     startWizard.CheckAndRun( frame );
++    AMIGA_STEP( "top 441" );
+ 
+     // Load library tables after startup wizard
+     GetLibraryManager().LoadGlobalTables();
++    AMIGA_STEP( "top 444" );
+ 
+     App().SetTopWindow( frame );      // wxApp gets a face.
+     App().SetAppDisplayName( frame->GetAboutTitle() );
++    AMIGA_STEP( "top 447" );
+ 
+     wxString relaunchDisplayName = frame->GetAboutTitle() + " " + GetMajorMinorVersion();
++    AMIGA_STEP( "top 449" );
+     KIPLATFORM::ENV::SetAppDetailsForWindow( frame, PATHS::GetExecutablePath(), relaunchDisplayName );
++    AMIGA_STEP( "top 450" );
+ 
+     // Allocate a slice of time to show the frame and update wxWidgets widgets
+     // (especially setting valid sizes) after creating frame and before calling
+     // OpenProjectFiles() that can update/use some widgets.
+     // The 2 calls to wxSafeYield are needed on wxGTK for best results.
+     wxSafeYield();
++    AMIGA_STEP( "top 456" );
+     HideSplash();
++    AMIGA_STEP( "top 457" );
+     frame->Show();
++    AMIGA_STEP( "top 458" );
+     wxSafeYield();
++    AMIGA_STEP( "top 459" );
+ 
+     // Now after the frame processing, the rest of the positional args are files
+     std::vector<wxString> fileArgs;
++    AMIGA_STEP( "top 462" );
+ 
+ 
+     static const wxCmdLineEntryDesc desc[] = {
+@@ -463,8 +510,11 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+     };
+ 
+     wxCmdLineParser parser( App().argc, App().argv );
++    AMIGA_STEP( "top 471" );
+     parser.SetDesc( desc );
++    AMIGA_STEP( "top 472" );
+     parser.Parse( false );
++    AMIGA_STEP( "top 473" );
+ 
+     if( parser.GetParamCount() )
+     {
+@@ -505,9 +555,11 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+         topFrame->PreloadLibraries( &Kiway );
+ 
+     PreloadDesignBlockLibraries( &Kiway );
++    AMIGA_STEP( "top 513" );
+ 
+ #ifdef KICAD_IPC_API
+     m_api_server->SetReadyToReply();
++    AMIGA_STEP( "top 516" );
+ #endif
+ 
+     return true;
 diff --git a/common/singleton.cpp b/common/singleton.cpp
 index df61f3ca..1d58e28f 100644
 --- a/common/singleton.cpp
