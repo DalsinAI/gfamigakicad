@@ -1,0 +1,78 @@
+--- a/thirdparty/libcontext/libcontext.h
++++ b/thirdparty/libcontext/libcontext.h
+@@ -22,7 +22,12 @@
+ #include <cstdio>
+ 
+ 
+-#if defined(__GNUC__) || defined(__APPLE__) || defined(__FreeBSD__)
++#if defined(__amigaos__) && defined(__m68k__)
++    /* AmigaOS 3 on the 68k: our own jump/make, in libcontext.cpp */
++    #define LIBCONTEXT_COMPILER_gcc
++    #define LIBCONTEXT_PLATFORM_amigaos_m68k
++    #define LIBCONTEXT_CALL_CONVENTION
++#elif defined(__GNUC__) || defined(__APPLE__) || defined(__FreeBSD__)
+ 
+     #undef LIBCONTEXT_HAS_OWN_STACK
+ 
+--- a/thirdparty/libcontext/libcontext.cpp
++++ b/thirdparty/libcontext/libcontext.cpp
+@@ -1583,6 +1583,58 @@
+ 
+ }; // namespace libcontext
+ 
++#if defined(LIBCONTEXT_PLATFORM_amigaos_m68k)
++/*
++ * AmigaOS 3, 68k (GCC, arguments on the stack, result in d0; d2-d7 and
++ * a2-a6 belong to the caller). Copyright (c) 2026 AmiCradle Team, under
++ * KiCad's licence for this file.
++ *
++ * A saved context is the stack pointer at a frame of the 11 saved
++ * registers (44 bytes) followed by the address to go on at. A new context
++ * from make_fcontext has after that: the address of finish (where its
++ * function returns to) and the slot its function reads its argument from.
++ * The build is soft float (or fpuauto's FPU routines, which keep nothing
++ * in FPU registers between calls), so no FPU state is saved, and an LC040
++ * with no FPU is never given an FPU instruction.
++ *
++ * jump_fcontext(ofc, nfc, vp, preserve_fpu): 4(sp) ofc, 8(sp) nfc, 12(sp) vp
++ */
++__asm (
++"    .text\n"
++"    .even\n"
++"    .globl _jump_fcontext\n"
++"_jump_fcontext:\n"
++"    movem.l d2-d7/a2-a6,-(sp)\n"
++"    move.l  48(sp),a0\n"          /* ofc */
++"    move.l  sp,(a0)\n"
++"    move.l  56(sp),d0\n"          /* vp: the result, and a new context's argument */
++"    move.l  52(sp),sp\n"          /* nfc */
++"    movem.l (sp)+,d2-d7/a2-a6\n"
++"    move.l  d0,8(sp)\n"           /* the argument slot of a new context */
++"    rts\n"
++"\n"
++"    .even\n"
++"    .globl _make_fcontext\n"
++"_make_fcontext:\n"                /* 4(sp) sp (stack top), 8(sp) size, 12(sp) fn */
++"    move.l  4(sp),d0\n"
++"    and.l   #-16,d0\n"
++"    sub.l   #64,d0\n"
++"    move.l  d0,a0\n"
++"    movem.l d2-d7/a2-a6,(a0)\n"   /* the new context starts with the caller's a4/a5 */
++"    move.l  12(sp),44(a0)\n"      /* where the context starts */
++"    lea     _libcontext_m68k_finish,a1\n"
++"    move.l  a1,48(a0)\n"          /* where its function returns to */
++"    clr.l   52(a0)\n"
++"    rts\n"
++);
++
++extern "C" void libcontext_m68k_finish( void )
++{
++    _Exit( 0 );
++}
++
++#endif
++
+ #ifdef __cplusplus
+ };
+ #endif
+\ No newline at end of file

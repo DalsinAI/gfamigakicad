@@ -1,0 +1,326 @@
+diff --git a/3d-viewer/CMakeLists.txt b/3d-viewer/CMakeLists.txt
+index 25324fce..981688e3 100644
+--- a/3d-viewer/CMakeLists.txt
++++ b/3d-viewer/CMakeLists.txt
+@@ -138,7 +138,7 @@ target_link_libraries( 3d-viewer
+ add_subdirectory( 3d_cache )
+ 
+ 
+-if( UNIX AND NOT APPLE )
++if( UNIX AND NOT APPLE AND NOT KICAD_AMIGA )
+     message( STATUS "Including libspnav support in 3d-viewer" )
+     add_subdirectory( 3d_spacenav )
+     target_link_libraries( 3d-viewer PRIVATE 3d-viewer_spacenav )
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 420f18bc..560c728f 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -107,6 +107,16 @@ endif()
+ ####################################
+ # Feature flags
+ ####################################
++# AmigaOS 3 (gfamigakicad): static libraries only, kifaces linked into
++# the programs, no Python, OpenCASCADE, OpenGL or webview yet.
++option( KICAD_AMIGA
++    "Build for AmigaOS 3 on the GFOpenWX Toolkit (default OFF)"
++    OFF )
++
++if( KICAD_AMIGA )
++    add_compile_definitions( KICAD_AMIGA )
++endif()
++
+ option( KICAD_SPICE_QA
+     "Build software Quality assurance unit tests for spice (default ON)"
+     ON )
+@@ -831,7 +841,7 @@ find_package(ZSTD REQUIRED)
+ #
+ find_package( CURL REQUIRED )
+ 
+-if( UNIX AND NOT APPLE )
++if( UNIX AND NOT APPLE AND NOT KICAD_AMIGA )
+     find_package( SPNAV REQUIRED )
+     include_directories( SYSTEM ${SPNAV_INCLUDE_DIR} )
+ endif()
+@@ -884,8 +894,17 @@ include( MinGWResourceCompiler )
+ find_package( ngspice REQUIRED )
+ 
+ # Find OpenCascade, required for STEP plugin and tools
++if( KICAD_AMIGA )
++    # OpenCASCADE is not ported yet: STEP and the other OCC exporters are
++    # left out (amiga/no_occ.cpp says so when asked for)
++    set( OCC_FOUND FALSE )
++    set( OCC_VERSION_STRING 7.5.0 )
++    set( OCC_INCLUDE_DIR "" )
++    set( OCC_LIBRARIES "" )
++else()
+ find_package(OCC)
+-if( NOT OCC_FOUND )
++endif()
++if( NOT OCC_FOUND AND NOT KICAD_AMIGA )
+     MESSAGE( FATAL_ERROR "================================================================\n"
+                          " OpenCASCADE was not found!\n"
+                          "================================================================\n")
+@@ -954,9 +973,11 @@ set( INC_AFTER
+ # Find Python and other scripting resources
+ #
+ 
++if( NOT KICAD_AMIGA )
+ # SWIG 4.0 or later require for proper C++11 support.
+ find_package( SWIG 4.0 REQUIRED )
+ include( ${SWIG_USE_FILE} )
++endif()
+ 
+ set( PythonInterp_FIND_VERSION 3.6 )
+ set( PythonLibs_FIND_VERSION 3.6 )
+@@ -1014,7 +1035,14 @@ else()
+ endif()
+ message( STATUS "Python module install path: ${PYTHON_DEST}" )
+ 
++if( KICAD_AMIGA )
++    # no Python on the Amiga yet: scripting is left out
++    set( PYTHON_INCLUDE_DIRS "" )
++    set( PYTHON_LIBRARIES "" )
++    set( PYTHONLIBS_VERSION_STRING "" )
++else()
+ find_package( PythonLibs 3.6 REQUIRED )
++endif()
+ 
+ # pybind11 is header-only, so include the subdir
+ # USE_CROSSCOMPILING is needed to avoid pybind11 trying to run a non-native intrepreter
+@@ -1075,6 +1103,8 @@ if( WXWIDGETS_REQUESTED_TOOLKIT
+     message( WARNING "wxWidgets and wxPython must be based on the same toolkit.\n"
+         "It will be fixed automatically if you skip the '--toolkit=xxx' "
+         "wxWidgets_CONFIG_OPTIONS parameter.")
++elseif( KICAD_AMIGA )
++    # the GFOpenWX Toolkit has one port, openlayout
+ elseif( UNIX AND NOT APPLE )
+     # Force the use of GTK3 on Linux
+     set( wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} "--toolkit=gtk3" )
+@@ -1091,9 +1121,14 @@ else()
+ endif()
+ 
+ # See line 49 of cmake/FindwxWidgets.cmake
++if( KICAD_AMIGA )
++    # the toolkit is one static build; no webview, and no gl until wxGLCanvas is in it
++    find_package( wxWidgets ${wxWidgets_REQ_VERSION} COMPONENTS aui adv html core net base propgrid xml stc richtext REQUIRED )
++else()
+ set( wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} --static=no )
+ 
+ find_package( wxWidgets ${wxWidgets_REQ_VERSION} COMPONENTS gl aui adv html core net base propgrid xml stc richtext webview REQUIRED )
++endif()
+ 
+ # Include wxWidgets macros.
+ include( ${wxWidgets_USE_FILE} )
+@@ -1108,7 +1143,7 @@ if( wxWidgets_FIND_STYLE STREQUAL "win32" )
+         add_compile_definitions( __WXGTK__ )
+     endif()
+ elseif( _wx_selected_config )
+-    string(REGEX MATCH "(msw|qt|gtk|osx)" KICAD_WX_PORT "${_wx_selected_config}")
++    string(REGEX MATCH "(msw|qt|gtk|osx|openlayout)" KICAD_WX_PORT "${_wx_selected_config}")
+ endif()
+ 
+ if( KICAD_WX_PORT )
+@@ -1138,7 +1173,9 @@ message(STATUS "wxHAS_GLX=${wxWidgets_HAS_GLX}")
+ message(STATUS "wxHAS_EGL=${wxWidgets_HAS_EGL}")
+ 
+ # Find OpenGL with GLU
++if( NOT KICAD_AMIGA )
+ find_package( OpenGL REQUIRED )
++endif()
+ 
+ if( KICAD_WAYLAND )
+     message( STATUS "Configuring KiCad to support Wayland features" )
+diff --git a/common/CMakeLists.txt b/common/CMakeLists.txt
+index 0144ac4f..48ee4c62 100644
+--- a/common/CMakeLists.txt
++++ b/common/CMakeLists.txt
+@@ -331,7 +331,7 @@ set( KICOMMON_SRCS
+     startwizard/startwizard_provider_settings.cpp
+     )
+ 
+-if( UNIX AND NOT APPLE )
++if( UNIX AND NOT APPLE AND NOT KICAD_AMIGA )
+     list( APPEND KICOMMON_SRCS
+         spacenav/libspnav_driver.cpp
+     )
+@@ -855,7 +855,7 @@ set( COMMON_SRCS
+     properties/property_mgr.cpp
+     properties/std_optional_variants.cpp
+ 
+-    database/database_connection.cpp
++    $<IF:$<BOOL:${KICAD_AMIGA}>,${CMAKE_SOURCE_DIR}/amiga/database_connection_none.cpp,database/database_connection.cpp>
+ 
+     http_lib/http_lib_connection.cpp
+     http_lib/http_lib_settings.cpp
+@@ -864,7 +864,7 @@ set( COMMON_SRCS
+     )
+ 
+ # This needs to be in the common library until draw_panel_gal is moved to kicommon
+-if( UNIX AND NOT APPLE )
++if( UNIX AND NOT APPLE AND NOT KICAD_AMIGA )
+     list( APPEND COMMON_SRCS
+         spacenav/spnav_2d_plugin.cpp
+     )
+@@ -926,7 +926,7 @@ target_link_libraries( common
+     compoundfilereader
+     Boost::headers
+     # Database support needs these two
+-    nanodbc # for now; maybe hoist out of common
++    $<$<NOT:$<BOOL:${KICAD_AMIGA}>>:nanodbc> # for now; maybe hoist out of common
+     Boost::locale
+     ${wxWidgets_LIBRARIES}
+     ${EXTRA_LIBS}
+@@ -963,9 +963,11 @@ target_include_directories( common PUBLIC
+     $<TARGET_PROPERTY:magic_enum,INTERFACE_INCLUDE_DIRECTORIES>
+     )
+ 
++if( NOT KICAD_AMIGA )
+ target_include_directories( common SYSTEM PUBLIC
+     $<TARGET_PROPERTY:nanodbc,INTERFACE_INCLUDE_DIRECTORIES>
+     )
++endif()
+ 
+ set( PCB_COMMON_SRCS
+     hash_eda.cpp
+diff --git a/libs/kiplatform/CMakeLists.txt b/libs/kiplatform/CMakeLists.txt
+index 5d8dd529..f8b4451e 100644
+--- a/libs/kiplatform/CMakeLists.txt
++++ b/libs/kiplatform/CMakeLists.txt
+@@ -11,6 +11,11 @@ elseif( KICAD_WX_PORT STREQUAL msw )
+         port/wxmsw/ui.cpp
+         port/wxmsw/webview.cpp
+         )
++elseif( KICAD_WX_PORT STREQUAL openlayout )
++    # AmigaOS 3: the files are gfamigakicad's, in amiga/kiplatform
++    set( PLATFORM_SRCS
++        ${CMAKE_SOURCE_DIR}/amiga/kiplatform/port/wxopenlayout/ui.cpp
++        )
+ elseif( KICAD_WX_PORT STREQUAL gtk )
+     set( PLATFORM_SRCS
+         port/wxgtk/ui.cpp
+@@ -72,6 +77,17 @@ elseif( WIN32 )
+         "imm32"
+         "windowsapp"
+         )
++elseif( KICAD_AMIGA )
++    list( APPEND PLATFORM_SRCS
++        ${CMAKE_SOURCE_DIR}/amiga/kiplatform/os/amiga/app.cpp
++        ${CMAKE_SOURCE_DIR}/amiga/kiplatform/os/amiga/drivers.cpp
++        ${CMAKE_SOURCE_DIR}/amiga/kiplatform/os/amiga/environment.cpp
++        ${CMAKE_SOURCE_DIR}/amiga/kiplatform/os/amiga/io.cpp
++        ${CMAKE_SOURCE_DIR}/amiga/kiplatform/os/amiga/policy.cpp
++        ${CMAKE_SOURCE_DIR}/amiga/kiplatform/os/amiga/secrets.cpp
++        ${CMAKE_SOURCE_DIR}/amiga/kiplatform/os/amiga/sysinfo.cpp
++        ${CMAKE_SOURCE_DIR}/amiga/kiplatform/os/amiga/printing.cpp
++        )
+ elseif( UNIX )
+     list( APPEND PLATFORM_SRCS
+         os/unix/app.cpp
+diff --git a/libs/kiplatform/include/kiplatform/sysinfo.h b/libs/kiplatform/include/kiplatform/sysinfo.h
+index bbe78c3c..29792057 100644
+--- a/libs/kiplatform/include/kiplatform/sysinfo.h
++++ b/libs/kiplatform/include/kiplatform/sysinfo.h
+@@ -94,7 +94,7 @@ public:
+ 
+ #if defined( _WIN32 )
+ #include <kiplatform/sysinfo_windows.h>
+-#elif defined( __unix__ ) || defined( __unix )
++#elif defined( __unix__ ) || defined( __unix ) || defined( __amigaos__ )
+ #include <kiplatform/sysinfo_gtk.h>
+ #elif defined( __APPLE__ )
+ #include <kiplatform/sysinfo_osx.h>
+diff --git a/libs/kiplatform/os/common/io.cpp b/libs/kiplatform/os/common/io.cpp
+index 68928f4e..1c34d3db 100644
+--- a/libs/kiplatform/os/common/io.cpp
++++ b/libs/kiplatform/os/common/io.cpp
+@@ -121,6 +121,40 @@ FILE* KIPLATFORM::IO::OpenUniqueSiblingTempFile( const wxString& aTargetPath, co
+ }
+ 
+ 
++#if defined( __amigaos__ )
++// AmigaOS: soft links are rare and libnix has no lstat()/realpath(); a
++// folder needs no flush (AmigaDOS writes it with the file); and rename()
++// will not replace a file, so the old one is deleted first (not atomic:
++// CommitTempFile's temporary copy is the fallback if the program stops
++// between the two).
++wxString KIPLATFORM::IO::ResolveSymlinkTarget( const wxString& aPath )
++{
++    return aPath;
++}
++
++
++bool KIPLATFORM::IO::FlushDirectory( const wxString& )
++{
++    return true;
++}
++
++
++bool KIPLATFORM::IO::AtomicRename( const wxString& aSrc, const wxString& aDst, wxString* aError )
++{
++    if( rename( aSrc.fn_str(), aDst.fn_str() ) == 0 )
++        return true;
++
++    if( wxFileName::FileExists( aDst ) && remove( aDst.fn_str() ) == 0
++            && rename( aSrc.fn_str(), aDst.fn_str() ) == 0 )
++        return true;
++
++    if( aError )
++        *aError = wxString::FromUTF8( strerror( errno ) );
++
++    return false;
++}
++
++#else
+ wxString KIPLATFORM::IO::ResolveSymlinkTarget( const wxString& aPath )
+ {
+     // Users commonly symlink shared config/project files into their working directory.
+@@ -174,6 +208,8 @@ bool KIPLATFORM::IO::AtomicRename( const wxString& aSrc, const wxString& aDst, w
+     return false;
+ }
+ 
++#endif // __amigaos__
++
+ #endif // !_WIN32
+ 
+ 
+diff --git a/pcbnew/CMakeLists.txt b/pcbnew/CMakeLists.txt
+index 276772bb..93a636ed 100644
+--- a/pcbnew/CMakeLists.txt
++++ b/pcbnew/CMakeLists.txt
+@@ -615,7 +615,7 @@ add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/pcb
+     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+     )
+ 
+-if( UNIX AND NOT APPLE )
++if( UNIX AND NOT APPLE AND NOT KICAD_AMIGA )
+     list( APPEND PCBNEW_EXTRA_LIBS rt )
+ endif()
+ 
+diff --git a/resources/CMakeLists.txt b/resources/CMakeLists.txt
+index 38414e92..ddc79ba8 100644
+--- a/resources/CMakeLists.txt
++++ b/resources/CMakeLists.txt
+@@ -4,7 +4,7 @@
+ if( APPLE )
+     #TODO Generate this at runtime as well
+     include( ${KICAD_CMAKE_MODULE_PATH}/WritePlatformMetadata_macos.cmake )
+-elseif( UNIX )
++elseif( UNIX AND NOT KICAD_AMIGA )
+     include( ${KICAD_CMAKE_MODULE_PATH}/KiCadAppNames.cmake )
+ 
+     # Add the command to configure the linux metainfo file with the version information
+diff --git a/thirdparty/CMakeLists.txt b/thirdparty/CMakeLists.txt
+index 365195a9..cd824d9e 100644
+--- a/thirdparty/CMakeLists.txt
++++ b/thirdparty/CMakeLists.txt
+@@ -58,7 +58,9 @@ add_subdirectory( libpopcnt )
+ add_subdirectory( magic_enum )
+ add_subdirectory( markdown2html )
+ add_subdirectory( nanoflann )
+-add_subdirectory( nanodbc )
++if( NOT KICAD_AMIGA )
++    add_subdirectory( nanodbc )
++endif()
+ add_subdirectory( nanosvg )
+ add_subdirectory( rectpack2d )
+ add_subdirectory( rtree )
