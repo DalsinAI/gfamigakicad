@@ -89,5 +89,5 @@ for p in kicad/kicad kicad/kicad-cli eeschema/eeschema pcbnew/pcbnew gerbview/ge
          pagelayout_editor/pl_editor bitmap2component/bitmap2component pcb_calculator/pcb_calculator; do
     [ -f "$B/$p" ] && cp "$B/$p" "$OUT/"
 done
-ls -l "$OUT"
+TC="$TC" BIN="$OUT" VERSION="$KICAD_RELEASE" OUT="$OUT" sh "$HERE/scripts/package.sh"
 step "done"
