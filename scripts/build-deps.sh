@@ -119,6 +119,11 @@ if ! done_for ngspice "$NGSPICE_SHA256"; then
     mkdir -p "$DEPS/include/ngspice"; cp "$S/src/include/ngspice/sharedspice.h" "$DEPS/include/ngspice/"
     mark ngspice "$NGSPICE_SHA256"; log "ngspice header done"
 fi
+# KiCad's find module wants a library file for it: an empty archive (the
+# simulator finds ngspice at run time, or says it isn't there)
+if [ ! -f "$DEPS/lib/libngspice_none.a" ]; then
+    printf '!<arch>\n' > "$DEPS/lib/libngspice_none.a"
+fi
 
 # ---- Boost: headers, and Boost.Locale on its std backend (no ICU, no iconv)
 if ! done_for boost "$BOOST_SHA256"; then

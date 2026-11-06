@@ -12,10 +12,10 @@ index 25324fce..981688e3 100644
      add_subdirectory( 3d_spacenav )
      target_link_libraries( 3d-viewer PRIVATE 3d-viewer_spacenav )
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 420f18bc..b507a0d3 100644
+index 420f18bc..22de9fc7 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -107,6 +107,25 @@ endif()
+@@ -107,6 +107,34 @@ endif()
  ####################################
  # Feature flags
  ####################################
@@ -25,8 +25,17 @@ index 420f18bc..b507a0d3 100644
 +    "Build for AmigaOS 3 on the GFOpenWX Toolkit (default OFF)"
 +    OFF )
 +
++# the editors' kifaces: loadable modules, or on AmigaOS (no dynamic loading)
++# static libraries each editor's program carries (below)
++set( KICAD_KIFACE_TYPE MODULE )
++
 +if( KICAD_AMIGA )
++    set( KICAD_KIFACE_TYPE STATIC )
 +    add_compile_definitions( KICAD_AMIGA )
++    # static libraries only, which name each other in every order: the linker
++    # goes over them until nothing more resolves
++    set( CMAKE_CXX_LINK_EXECUTABLE
++         "<CMAKE_CXX_COMPILER> <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> -Wl,--start-group <LINK_LIBRARIES> -Wl,--end-group" )
 +    # wx classes the GFOpenWX Toolkit does not build yet (amiga/amiga_wx_compat.h)
 +    include_directories( ${CMAKE_SOURCE_DIR}/amiga )
 +    # our font headers before KiCad's: gfopenfont.library in place of FreeType,
@@ -41,7 +50,7 @@ index 420f18bc..b507a0d3 100644
  option( KICAD_SPICE_QA
      "Build software Quality assurance unit tests for spice (default ON)"
      ON )
-@@ -831,7 +850,7 @@ find_package(ZSTD REQUIRED)
+@@ -831,7 +859,7 @@ find_package(ZSTD REQUIRED)
  #
  find_package( CURL REQUIRED )
  
@@ -50,7 +59,7 @@ index 420f18bc..b507a0d3 100644
      find_package( SPNAV REQUIRED )
      include_directories( SYSTEM ${SPNAV_INCLUDE_DIR} )
  endif()
-@@ -839,11 +858,17 @@ endif()
+@@ -839,11 +867,17 @@ endif()
  #
  # Find Cairo library, required
  #
@@ -68,7 +77,7 @@ index 420f18bc..b507a0d3 100644
  
  # Find libgit2, required
  find_package( libgit2 1.5 REQUIRED )
-@@ -869,6 +894,12 @@ if( MSVC )
+@@ -869,6 +903,12 @@ if( MSVC )
  set( FREETYPE_MIN_VERSION 2.11.1 )
  endif()
  
@@ -81,7 +90,7 @@ index 420f18bc..b507a0d3 100644
  find_package( Freetype ${FREETYPE_MIN_VERSION} REQUIRED )
  include_directories( SYSTEM ${FREETYPE_INCLUDE_DIRS} )
  
-@@ -876,6 +907,7 @@ find_package( HarfBuzz REQUIRED )
+@@ -876,6 +916,7 @@ find_package( HarfBuzz REQUIRED )
  include_directories( SYSTEM ${HarfBuzz_INCLUDE_DIRS} )
  
  find_package( Fontconfig REQUIRED )
@@ -89,7 +98,7 @@ index 420f18bc..b507a0d3 100644
  
  # Include MinGW resource compiler.
  include( MinGWResourceCompiler )
-@@ -884,8 +916,17 @@ include( MinGWResourceCompiler )
+@@ -884,8 +925,17 @@ include( MinGWResourceCompiler )
  find_package( ngspice REQUIRED )
  
  # Find OpenCascade, required for STEP plugin and tools
@@ -108,7 +117,7 @@ index 420f18bc..b507a0d3 100644
      MESSAGE( FATAL_ERROR "================================================================\n"
                           " OpenCASCADE was not found!\n"
                           "================================================================\n")
-@@ -954,9 +995,11 @@ set( INC_AFTER
+@@ -954,9 +1004,11 @@ set( INC_AFTER
  # Find Python and other scripting resources
  #
  
@@ -120,7 +129,7 @@ index 420f18bc..b507a0d3 100644
  
  set( PythonInterp_FIND_VERSION 3.6 )
  set( PythonLibs_FIND_VERSION 3.6 )
-@@ -1014,7 +1057,14 @@ else()
+@@ -1014,7 +1066,14 @@ else()
  endif()
  message( STATUS "Python module install path: ${PYTHON_DEST}" )
  
@@ -135,7 +144,7 @@ index 420f18bc..b507a0d3 100644
  
  # pybind11 is header-only, so include the subdir
  # USE_CROSSCOMPILING is needed to avoid pybind11 trying to run a non-native intrepreter
-@@ -1075,6 +1125,8 @@ if( WXWIDGETS_REQUESTED_TOOLKIT
+@@ -1075,6 +1134,8 @@ if( WXWIDGETS_REQUESTED_TOOLKIT
      message( WARNING "wxWidgets and wxPython must be based on the same toolkit.\n"
          "It will be fixed automatically if you skip the '--toolkit=xxx' "
          "wxWidgets_CONFIG_OPTIONS parameter.")
@@ -144,7 +153,7 @@ index 420f18bc..b507a0d3 100644
  elseif( UNIX AND NOT APPLE )
      # Force the use of GTK3 on Linux
      set( wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} "--toolkit=gtk3" )
-@@ -1091,9 +1143,16 @@ else()
+@@ -1091,9 +1152,16 @@ else()
  endif()
  
  # See line 49 of cmake/FindwxWidgets.cmake
@@ -161,7 +170,7 @@ index 420f18bc..b507a0d3 100644
  
  # Include wxWidgets macros.
  include( ${wxWidgets_USE_FILE} )
-@@ -1108,7 +1167,7 @@ if( wxWidgets_FIND_STYLE STREQUAL "win32" )
+@@ -1108,7 +1176,7 @@ if( wxWidgets_FIND_STYLE STREQUAL "win32" )
          add_compile_definitions( __WXGTK__ )
      endif()
  elseif( _wx_selected_config )
@@ -170,7 +179,7 @@ index 420f18bc..b507a0d3 100644
  endif()
  
  if( KICAD_WX_PORT )
-@@ -1138,7 +1197,9 @@ message(STATUS "wxHAS_GLX=${wxWidgets_HAS_GLX}")
+@@ -1138,7 +1206,9 @@ message(STATUS "wxHAS_GLX=${wxWidgets_HAS_GLX}")
  message(STATUS "wxHAS_EGL=${wxWidgets_HAS_EGL}")
  
  # Find OpenGL with GLU
@@ -180,6 +189,23 @@ index 420f18bc..b507a0d3 100644
  
  if( KICAD_WAYLAND )
      message( STATUS "Configuring KiCad to support Wayland features" )
+@@ -1241,6 +1311,16 @@ add_subdirectory( pcb_calculator )
+ add_subdirectory( plugins )             # 3D plugins must be built before kicad
+ add_subdirectory( cvpcb )               # must be after pcbnew
+ add_subdirectory( kicad )               # should follow pcbnew, eeschema, api
++
++if( KICAD_AMIGA )
++    # no dynamic loading on AmigaOS: each editor's program carries its kiface
++    # (single_top.cpp then takes the getter it is linked with)
++    target_link_libraries( eeschema eeschema_kiface )
++    target_link_libraries( pcbnew pcbnew_kiface )
++    target_link_libraries( gerbview gerbview_kiface )
++    target_link_libraries( pl_editor pl_editor_kiface )
++    target_link_libraries( pcb_calculator pcb_calculator_kiface )
++endif()
+ add_subdirectory( tools )
+ add_subdirectory( utils )
+ 
 diff --git a/cmake/ConfigurePlatform.cmake b/cmake/ConfigurePlatform.cmake
 index 8daf035a..3bc70266 100644
 --- a/cmake/ConfigurePlatform.cmake
@@ -706,12 +732,18 @@ index ec1662bb..5804ac99 100644
      if( hasVisibleGlyph && !run.m_bytes.empty() )
          aRuns->push_back( std::move( run ) );
 diff --git a/common/single_top.cpp b/common/single_top.cpp
-index 47e07280..350e2679 100644
+index 47e07280..4b36202a 100644
 --- a/common/single_top.cpp
 +++ b/common/single_top.cpp
-@@ -35,6 +35,7 @@
+@@ -34,7 +34,13 @@
+ */
  
  
++#ifdef KICAD_AMIGA
++// AmigaOS has no dynamic loading: the program is linked with its kiface
++#undef BUILD_KIWAY_DLL
++#endif
++
  #include <typeinfo>
 +#include <wx/app.h>
  #include <wx/cmdline.h>
@@ -752,6 +784,32 @@ index c23c3b13..88d46f45 100644
  #include <wx/aui/aui.h>
  #include <wx/aui/framemanager.h>
  #include <wx/aui/auibook.h>
+diff --git a/cvpcb/CMakeLists.txt b/cvpcb/CMakeLists.txt
+index 7bfb46a8..c42a4cae 100644
+--- a/cvpcb/CMakeLists.txt
++++ b/cvpcb/CMakeLists.txt
+@@ -56,7 +56,7 @@ endif()
+ 
+ 
+ # the main cvpcb program, in DSO form.
+-add_library( cvpcb_kiface MODULE
++add_library( cvpcb_kiface ${KICAD_KIFACE_TYPE}
+     cvpcb.cpp
+     ${CVPCB_SRCS}
+     ${CVPCB_DIALOGS}
+diff --git a/eeschema/CMakeLists.txt b/eeschema/CMakeLists.txt
+index 7b853e62..4960b65a 100644
+--- a/eeschema/CMakeLists.txt
++++ b/eeschema/CMakeLists.txt
+@@ -637,7 +637,7 @@ target_link_libraries( eeschema_kiface_objects PUBLIC eeschema_navlib)
+ 
+ add_dependencies( eeschema_kiface_objects eeschema_navlib )
+ 
+-add_library( eeschema_kiface MODULE
++add_library( eeschema_kiface ${KICAD_KIFACE_TYPE}
+     eeschema.cpp
+     )
+ 
 diff --git a/eeschema/sch_io/database/sch_io_database.cpp b/eeschema/sch_io/database/sch_io_database.cpp
 index ef973069..bd7b0eaa 100644
 --- a/eeschema/sch_io/database/sch_io_database.cpp
@@ -780,6 +838,19 @@ index 09fb5e16..02bce0ec 100644
  
      while( m_refreshRunning.load() )
      {
+diff --git a/gerbview/CMakeLists.txt b/gerbview/CMakeLists.txt
+index aa7c32eb..fb5f0bb7 100644
+--- a/gerbview/CMakeLists.txt
++++ b/gerbview/CMakeLists.txt
+@@ -144,7 +144,7 @@ target_link_libraries( gerbview_kiface_objects PUBLIC gerbview_navlib)
+ add_dependencies( gerbview_kiface_objects gerbview_navlib )
+ 
+ # the main gerbview program, in DSO form.
+-add_library( gerbview_kiface MODULE )
++add_library( gerbview_kiface ${KICAD_KIFACE_TYPE} )
+ 
+ set_target_properties( gerbview_kiface PROPERTIES
+     OUTPUT_NAME     gerbview
 diff --git a/include/font/fontconfig.h b/include/font/fontconfig.h
 index d434d8d5..00766124 100644
 --- a/include/font/fontconfig.h
@@ -986,10 +1057,10 @@ index d39b00bd..c9aca562 100644
  #include <bitmaps.h>
  #include <kiplatform/environment.h>
 diff --git a/libs/kiplatform/CMakeLists.txt b/libs/kiplatform/CMakeLists.txt
-index 5d8dd529..f8b4451e 100644
+index 5d8dd529..241339ce 100644
 --- a/libs/kiplatform/CMakeLists.txt
 +++ b/libs/kiplatform/CMakeLists.txt
-@@ -11,6 +11,11 @@ elseif( KICAD_WX_PORT STREQUAL msw )
+@@ -11,6 +11,12 @@ elseif( KICAD_WX_PORT STREQUAL msw )
          port/wxmsw/ui.cpp
          port/wxmsw/webview.cpp
          )
@@ -997,11 +1068,12 @@ index 5d8dd529..f8b4451e 100644
 +    # AmigaOS 3: the files are gfamigakicad's, in amiga/kiplatform
 +    set( PLATFORM_SRCS
 +        ${CMAKE_SOURCE_DIR}/amiga/kiplatform/port/wxopenlayout/ui.cpp
++        ${CMAKE_SOURCE_DIR}/amiga/kiplatform/port/wxopenlayout/webview.cpp
 +        )
  elseif( KICAD_WX_PORT STREQUAL gtk )
      set( PLATFORM_SRCS
          port/wxgtk/ui.cpp
-@@ -72,6 +77,17 @@ elseif( WIN32 )
+@@ -72,6 +78,17 @@ elseif( WIN32 )
          "imm32"
          "windowsapp"
          )
@@ -1086,8 +1158,34 @@ index 68928f4e..1c34d3db 100644
  #endif // !_WIN32
  
  
+diff --git a/pagelayout_editor/CMakeLists.txt b/pagelayout_editor/CMakeLists.txt
+index f287e536..04624b50 100644
+--- a/pagelayout_editor/CMakeLists.txt
++++ b/pagelayout_editor/CMakeLists.txt
+@@ -90,7 +90,7 @@ target_link_options( pl_editor PRIVATE
+     )
+ 
+ # the main pl_editor program, in DSO form.
+-add_library( pl_editor_kiface MODULE
++add_library( pl_editor_kiface ${KICAD_KIFACE_TYPE}
+     pl_editor.cpp
+     ${PL_EDITOR_SRCS}
+     ${DIALOGS_SRCS}
+diff --git a/pcb_calculator/CMakeLists.txt b/pcb_calculator/CMakeLists.txt
+index 915e4d70..cc966183 100644
+--- a/pcb_calculator/CMakeLists.txt
++++ b/pcb_calculator/CMakeLists.txt
+@@ -104,7 +104,7 @@ target_link_options( pcb_calculator PRIVATE
+     )
+ 
+ # the main pcb_calculator program, in DSO form.
+-add_library( pcb_calculator_kiface MODULE
++add_library( pcb_calculator_kiface ${KICAD_KIFACE_TYPE}
+     pcb_calculator.cpp
+     ${PCB_CALCULATOR_SRCS}
+     )
 diff --git a/pcbnew/CMakeLists.txt b/pcbnew/CMakeLists.txt
-index 276772bb..7746f9cd 100644
+index 276772bb..92da552d 100644
 --- a/pcbnew/CMakeLists.txt
 +++ b/pcbnew/CMakeLists.txt
 @@ -279,6 +279,12 @@ set( PCBNEW_EXPORTERS
@@ -1126,6 +1224,15 @@ index 276772bb..7746f9cd 100644
 +if( UNIX AND NOT APPLE AND NOT KICAD_AMIGA )
      list( APPEND PCBNEW_EXTRA_LIBS rt )
  endif()
+ 
+@@ -852,7 +863,7 @@ target_link_libraries( pcbnew_kiface_objects
+         ${OCC_LIBRARIES}
+     )
+ 
+-add_library( pcbnew_kiface MODULE
++add_library( pcbnew_kiface ${KICAD_KIFACE_TYPE}
+     pcbnew.cpp
+     )
  
 diff --git a/pcbnew/board_item.cpp b/pcbnew/board_item.cpp
 index 76830a09..223d99d1 100644
@@ -1282,6 +1389,28 @@ index 12c97d2f..724b4690 100644
  
  # The location of the template file for lemon is passed as a property on the lemon target
  define_property( TARGET
+diff --git a/thirdparty/nanosvg/nanosvg.h b/thirdparty/nanosvg/nanosvg.h
+index a6a659bc..46ddb325 100644
+--- a/thirdparty/nanosvg/nanosvg.h
++++ b/thirdparty/nanosvg/nanosvg.h
+@@ -26,6 +26,17 @@
+  *
+  */
+ 
++#ifdef KICAD_AMIGA
++// the GFOpenWX Toolkit links its own nanosvg (wxBitmapBundle's SVG): KiCad's
++// copy, which differs from it, gets names of its own
++#define nsvgParse          kicad_nsvgParse
++#define nsvgParseFromFile  kicad_nsvgParseFromFile
++#define nsvgDelete         kicad_nsvgDelete
++#define nsvgDuplicatePath  kicad_nsvgDuplicatePath
++#define nsvg__parseXML     kicad_nsvg__parseXML
++#define nsvg__colors       kicad_nsvg__colors
++#endif
++
+ #ifndef NANOSVG_H
+ #define NANOSVG_H
+ 
 diff --git a/thirdparty/rapidcsv/rapidcsv/rapidcsv.h b/thirdparty/rapidcsv/rapidcsv/rapidcsv.h
 index 19391b01..1c31a9d6 100644
 --- a/thirdparty/rapidcsv/rapidcsv/rapidcsv.h
@@ -1299,3 +1428,19 @@ index 19391b01..1c31a9d6 100644
               return;
             }
           }
+diff --git a/utils/idftools/CMakeLists.txt b/utils/idftools/CMakeLists.txt
+index 3aa33ecc..29fc4c7e 100644
+--- a/utils/idftools/CMakeLists.txt
++++ b/utils/idftools/CMakeLists.txt
+@@ -23,6 +23,11 @@ target_link_libraries( idf3
+     Boost::headers
+     )
+ 
++if( KICAD_AMIGA )
++    # pcbnew's IDF export needs only the library; the tools stay for later
++    return()
++endif()
++
+ add_executable( idfcyl idf_cylinder.cpp )
+ add_executable( idfrect idf_rect.cpp )
+ add_executable( dxf2idf dxf2idfmain.cpp dxf2idf.cpp )

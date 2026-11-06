@@ -22,6 +22,9 @@ OPENSDK_COMMIT=60797bf2d7d7fb63c0e8169fb5a08cdcc35f180c
 # GFOpenWX Toolkit the SDK (WXSDK) is built from: PR #4 branch with STC
 TOOLKIT_REPO=https://github.com/DalsinAI/gfopenwxtoolkit
 TOOLKIT_COMMIT=7fb2de8eb56eac123103f5cbff0cd787ab937268
+# the toolkit's lab SDK at that commit (Cradle job output on the dev machine)
+TOOLKIT_SDK_JOB=j20261106T064303-a75b2e
+TOOLKIT_SDK_SHA256=5077bff7551052ef46c6b9fcdf2559b7372943e1f50e037a7498f326a008427b
 
 # libcurl (scripts/build-curl.sh): gfopencurl's build, with gfopentls's headers
 GFOPENCURL_COMMIT=ed7fe173a57e74dbe83a455f7fdb3ce7bf03d3be

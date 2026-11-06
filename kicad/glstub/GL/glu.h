@@ -61,6 +61,7 @@ GLUtesselator* gluNewTess( void );
 void gluDeleteTess( GLUtesselator* tess );
 void gluTessCallback( GLUtesselator* tess, GLenum which, _GLUfuncptr fn );
 void gluTessProperty( GLUtesselator* tess, GLenum which, GLdouble data );
+void gluTessNormal( GLUtesselator* tess, GLdouble x, GLdouble y, GLdouble z );
 void gluTessBeginPolygon( GLUtesselator* tess, GLvoid* data );
 void gluTessBeginContour( GLUtesselator* tess );
 void gluTessVertex( GLUtesselator* tess, GLdouble* location, GLvoid* data );

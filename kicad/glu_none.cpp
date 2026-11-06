@@ -24,6 +24,7 @@ GLUtesselator* gluNewTess( void ) { return new GLUtesselator(); }
 void gluDeleteTess( GLUtesselator* t ) { delete t; }
 void gluTessCallback( GLUtesselator*, GLenum, _GLUfuncptr ) {}
 void gluTessProperty( GLUtesselator*, GLenum, GLdouble ) {}
+void gluTessNormal( GLUtesselator*, GLdouble, GLdouble, GLdouble ) {}
 void gluTessBeginPolygon( GLUtesselator*, GLvoid* ) {}
 void gluTessBeginContour( GLUtesselator* ) {}
 void gluTessVertex( GLUtesselator*, GLdouble*, GLvoid* ) {}

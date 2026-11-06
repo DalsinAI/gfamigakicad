@@ -23,8 +23,21 @@ left() { echo $((LIMIT - ($(date +%s) - START))); }
 step() { echo "kicad-amiga: $* ($(( $(date +%s) - START )) s)"; }
 again() { step "not finished, run again"; exit 3; }
 
-# ---- the GFOpenWX Toolkit SDK at the pinned commit
+# ---- the GFOpenWX Toolkit SDK at the pinned commit: the toolkit's own
+# lab build of it when this machine has that (deps.lock TOOLKIT_SDK_*),
+# else built here
 WX="$WORK/wx"
+SDKTAR=${TOOLKIT_SDK_TARBALL:-"$HOME/AmiCradle-dev/cradle-builds/jobs/$TOOLKIT_SDK_JOB/out/gfopenwx-sdk.tar.gz"}
+if [ "$(cat "$WX/.commit" 2>/dev/null || true)" != "$TOOLKIT_COMMIT" ] && [ -f "$SDKTAR" ] \
+   && [ "$(sha256sum "$SDKTAR" | cut -d' ' -f1)" = "$TOOLKIT_SDK_SHA256" ]; then
+    step "toolkit SDK from $SDKTAR"
+    rm -rf "$WX/out/sdk"; mkdir -p "$WX/out/sdk.tmp"
+    tar xzf "$SDKTAR" -C "$WX/out/sdk.tmp"
+    top=$(find "$WX/out/sdk.tmp" -name wx-config -path '*/bin/*' | head -1)
+    [ -n "$top" ] || { echo "no bin/wx-config in $SDKTAR" >&2; exit 1; }
+    mv "$(dirname "$(dirname "$top")")" "$WX/out/sdk"; rm -rf "$WX/out/sdk.tmp"
+    echo "$TOOLKIT_COMMIT" > "$WX/.commit"
+fi
 if [ "$(cat "$WX/.commit" 2>/dev/null || true)" != "$TOOLKIT_COMMIT" ]; then
     step "toolkit $TOOLKIT_COMMIT"
     S="$WORK/src/gfopenwxtoolkit"
@@ -40,7 +53,7 @@ if [ "$(cat "$WX/.commit" 2>/dev/null || true)" != "$TOOLKIT_COMMIT" ]; then
     [ "$rc" = 0 ] || { tail -30 "$WORK/toolkit.log"; exit 1; }
     echo "$TOOLKIT_COMMIT" > "$WX/.commit"
 fi
-WXSDK="$WX/out/sdk"; WXSRC=$(ls -d "$WX"/wxWidgets-* | head -1)
+WXSDK="$WX/out/sdk"
 [ "$(left)" -gt 120 ] || again
 
 # ---- Boost.Locale, protobuf, libgit2, zstd, GLM, zlib on z.library and the host tools

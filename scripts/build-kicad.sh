@@ -52,10 +52,10 @@ if [ ! -f "$B/build.ninja" ] || [ "${RECONFIGURE:-0}" = 1 ]; then
         -DKC_EXTRA_LIBS="-Wl,--start-group -L$CURL/lib -lcurl -lnghttp2 -L$DEPS/lib -lz -lgfamiga_compat -Wl,--end-group" -DZLIB_INCLUDE_DIR="$DEPS/include" -DZLIB_LIBRARY="$DEPS/lib/libz.a" -DCURL_INCLUDE_DIR="$CURL/include" -DCURL_LIBRARY="$CURL/lib/libcurl.a" -DKICAD_AMIGA=ON -DKICAD_AMIGA_SDK_INCLUDE="$WORK/src/opensdk/Include" -DKICAD_WAYLAND=OFF -DKICAD_HOST_LEMON="$HOST/bin/lemon" \
         -DKICAD_SCRIPTING_WXPYTHON=OFF -DKICAD_IPC_API=OFF -DKICAD_BUILD_QA_TESTS=OFF \
         -DKICAD_BUILD_I18N=OFF -DKICAD_SPICE_QA=OFF -DKICAD_USE_SENTRY=OFF -DKICAD_UPDATE_CHECK=OFF \
-        -DKICAD_USE_PCH=OFF -DKICAD_INSTALL_DEMOS=OFF -DKICAD_SIGNAL_INTEGRITY=OFF -DKICAD_IDF_TOOLS=OFF \
+        -DKICAD_USE_PCH=OFF -DKICAD_INSTALL_DEMOS=OFF -DKICAD_SIGNAL_INTEGRITY=OFF \
         -DProtobuf_PROTOC_EXECUTABLE="$HOST/bin/protoc" -DProtobuf_INCLUDE_DIR="$DEPS/include" \
         -DProtobuf_LIBRARY="$DEPS/lib/libprotobuf.a" -DKICAD_USE_CMAKE_FINDPROTOBUF=ON \
-        -DNGSPICE_INCLUDE_DIR="$DEPS/include" -DNGSPICE_LIBRARY="$DEPS/include/ngspice/sharedspice.h" \
+        -DNGSPICE_INCLUDE_DIR="$DEPS/include" -DNGSPICE_LIBRARY="$DEPS/lib/libngspice_none.a" \
         -DBoost_INCLUDE_DIR="$DEPS/include" -DBoost_LOCALE_LIBRARY_RELEASE="$DEPS/lib/libboost_locale.a" \
         -DBoost_NO_SYSTEM_PATHS=ON -DBoost_USE_STATIC_LIBS=ON \
         -DGLM_INCLUDE_DIR="$DEPS/include" \
