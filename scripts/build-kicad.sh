@@ -34,6 +34,11 @@ if [ "$(cat "$SRC/.gfamiga-patches" 2>/dev/null || true)" != "$PSUM" ]; then
     echo "$PSUM" > "$SRC/.gfamiga-patches"
 fi
 
+# lemon (KiCad's parser generator) runs at build time: build it for the host
+if [ ! -x "$HOST/bin/lemon" ] || [ "$SRC/thirdparty/lemon/lemon.c" -nt "$HOST/bin/lemon" ]; then
+    mkdir -p "$HOST/bin"; ${HOSTCC:-cc} -O2 -o "$HOST/bin/lemon" "$SRC/thirdparty/lemon/lemon.c"
+fi
+
 B="$WORK/kicad-build"
 if [ ! -f "$B/build.ninja" ] || [ "${RECONFIGURE:-0}" = 1 ]; then
     cmake -S "$SRC" -B "$B" -G Ninja \
@@ -42,7 +47,7 @@ if [ ! -f "$B/build.ninja" ] || [ "${RECONFIGURE:-0}" = 1 ]; then
         -DCMAKE_CXX_FLAGS_RELEASE="-O2 -DNDEBUG" -DCMAKE_C_FLAGS_RELEASE="-O2 -DNDEBUG" \
         -DCMAKE_PREFIX_PATH="/" \
         -DwxWidgets_CONFIG_EXECUTABLE="$WXSDK/bin/wx-config" \
-        -DKICAD_AMIGA=ON -DKICAD_WAYLAND=OFF \
+        -DKICAD_AMIGA=ON -DKICAD_WAYLAND=OFF -DKICAD_HOST_LEMON="$HOST/bin/lemon" \
         -DCAIRO_INCLUDE_DIR="$SYSLIBS/include/cairo" -DCAIRO_LIBRARY="$SYSLIBS/lib/libcairo.a" \
         -DPIXMAN_INCLUDE_DIR="$SYSLIBS/include/pixman-1" -DPIXMAN_LIBRARY="$SYSLIBS/lib/libpixman-1.a" \
         -DFontconfig_INCLUDE_DIR="$SYSLIBS/include" -DFontconfig_LIBRARY="$SYSLIBS/lib/libfontconfig.a" \

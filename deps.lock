@@ -18,3 +18,8 @@ NGSPICE_SHA256=894e649651f1838a14095e5a5439e7d3aa63e87ede14d283173fda4fcdef675f
 # OpenNDK (our clean-room NDK, with the socket headers), from the Open SDK
 OPENSDK_REPO=https://github.com/DalsinAI/gfopensdk
 OPENSDK_COMMIT=007965a7905803c73f1caeae199badbd8f4c1b95
+
+# GFOpenWX Toolkit the SDK (WXSDK) is built from: PR #4 branch with STC,
+# plus wxUSE_BITMAPCOMBOBOX (asked of the toolkit)
+TOOLKIT_REPO=https://github.com/DalsinAI/gfopenwxtoolkit
+TOOLKIT_COMMIT=5503cec90a313baa3e77c5abe22e7065a5824d85

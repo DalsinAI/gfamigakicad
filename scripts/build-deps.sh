@@ -137,6 +137,8 @@ if ! done_for protobuf "$PROTOBUF_SHA256"; then
         -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_WITH_ZLIB=OFF -DCMAKE_INSTALL_PREFIX="$HOST" >/dev/null
     cmake --build "$WORK/obj/protoc-host" -j"$JOBS" --target protoc >/dev/null
     mkdir -p "$HOST/bin"; cp "$WORK/obj/protoc-host/protoc" "$HOST/bin/"
+    # protoc finds the well-known .proto files (any.proto ...) in ../include
+    ln -sfn "$DEPS/include" "$HOST/include"
     cmake -S "$S" -B "$WORK/obj/protobuf" -G Ninja -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
         -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_RELEASE="-O2 -I$DEPS/include" -Dprotobuf_BUILD_TESTS=OFF \
         -Dprotobuf_BUILD_PROTOC_BINARIES=OFF -Dprotobuf_BUILD_SHARED_LIBS=OFF \
