@@ -526,10 +526,10 @@ index 8b7a93d6..3012bedf 100644
  
      return path;
 diff --git a/common/pgm_base.cpp b/common/pgm_base.cpp
-index 689c6de5..f998c503 100644
+index 689c6de5..b584d27b 100644
 --- a/common/pgm_base.cpp
 +++ b/common/pgm_base.cpp
-@@ -328,27 +328,52 @@ void PGM_BASE::HideSplash()
+@@ -328,27 +328,56 @@ void PGM_BASE::HideSplash()
  }
  
  
@@ -537,13 +537,17 @@ index 689c6de5..f998c503 100644
 +#ifdef KICAD_AMIGA
 +#include <cstdio>
 +#include <cstdlib>
-+// start-up markers on stderr when KICAD_AMIGA_STEPS is set
++// start-up markers, when KICAD_AMIGA_STEPS is set
 +static void AMIGA_STEP( const char* aWhere )
 +{
-+    if( std::getenv( "KICAD_AMIGA_STEPS" ) )
++    // KICAD_AMIGA_STEPS names the file the markers are added to
++    if( const char* name = std::getenv( "KICAD_AMIGA_STEPS" ) )
 +    {
-+        std::fprintf( stderr, "step %s\n", aWhere );
-+        std::fflush( stderr );
++        if( FILE* f = std::fopen( name, "a" ) )
++        {
++            std::fprintf( f, "step %s\n", aWhere );
++            std::fclose( f );
++        }
 +    }
 +}
 +#else
@@ -582,7 +586,7 @@ index 689c6de5..f998c503 100644
  
      /// Should never happen but boost unit_test isn't playing nicely in some cases
      if( App().argc == 0 )
-@@ -357,12 +382,15 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+@@ -357,12 +386,15 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
          pgm_name = wxFileName( App().argv[0] ).GetName().Lower();
  
      APP_MONITOR::SENTRY::Instance()->AddTag( "kicad.app", pgm_name );
@@ -598,7 +602,7 @@ index 689c6de5..f998c503 100644
  
  #if !wxCHECK_VERSION( 3, 3, 0 )
      // Without this the wxPropertyGridManager segfaults on Windows.
-@@ -384,7 +412,9 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+@@ -384,7 +416,9 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
      // multi-user machine, other need to be able to access it to check for the lock files or make
      // their own lock files.
      wxString instanceCheckerDir = PATHS::GetInstanceCheckerPath();
@@ -608,7 +612,7 @@ index 689c6de5..f998c503 100644
      wxChmod( instanceCheckerDir,
               wxPOSIX_USER_READ | wxPOSIX_USER_WRITE | wxPOSIX_USER_EXECUTE |
               wxPOSIX_GROUP_READ | wxPOSIX_GROUP_WRITE | wxPOSIX_GROUP_EXECUTE |
-@@ -394,12 +424,15 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+@@ -394,12 +428,15 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
                                                       GetMajorMinorVersion() );
  
      m_pgm_checker = std::make_unique<wxSingleInstanceChecker>();
@@ -624,7 +628,7 @@ index 689c6de5..f998c503 100644
  
      if( isDefined )    // ensure m_kicad_env ends by "/"
      {
-@@ -411,7 +444,9 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+@@ -411,7 +448,9 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
  
      // Init parameters for configuration
      App().SetVendorName(  wxT( "KiCad" ) );
@@ -634,7 +638,7 @@ index 689c6de5..f998c503 100644
  
  #if wxCHECK_VERSION( 3, 3, 1 ) && defined( __WXGTK__ ) && defined( KICAD_DESKTOP_APP_NAME )
      // wxGTK feeds the class name to gdk_wayland_window_set_application_id(), so setting it
-@@ -420,6 +455,7 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+@@ -420,6 +459,7 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
      // and is supplied by CMake. The main manager keeps the bare app name; the other GUI apps
      // are prefixed. Executables without a desktop file (pl_editor, kicad-cli) are left alone.
      wxString desktopId;
@@ -642,7 +646,7 @@ index 689c6de5..f998c503 100644
  
      if( pgm_name == wxT( "kicad" ) )
      {
-@@ -440,8 +476,11 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+@@ -440,8 +480,11 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
  
      // Analyze the command line & initialize the binary path
      wxString tmp;
@@ -654,7 +658,7 @@ index 689c6de5..f998c503 100644
  
  #ifdef _MSC_VER
      if( !wxGetEnv( "FONTCONFIG_PATH", NULL ) )
-@@ -456,15 +495,21 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+@@ -456,15 +499,21 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
  
  #ifdef _MSC_VER
      winrt::init_apartment(winrt::apartment_type::single_threaded);
@@ -676,7 +680,7 @@ index 689c6de5..f998c503 100644
  #endif
  
      // Our unit test mocks break if we continue
-@@ -479,13 +524,17 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+@@ -479,13 +528,17 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
  
      // Set up built-in environment variables (and override them from the system environment if set)
      COMMON_SETTINGS* commonSettings = GetCommonSettings();
@@ -694,7 +698,7 @@ index 689c6de5..f998c503 100644
  
  #ifdef KICAD_IPC_API
      // If user doesn't have a saved Python interpreter, try (potentially again) to find one
-@@ -497,15 +546,19 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+@@ -497,15 +550,19 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
      // env vars could be incorrectly initialized on Linux
      // (if the value contains some non ASCII7 chars, the env var is not initialized)
      SetLanguage( tmp, true );
@@ -714,7 +718,7 @@ index 689c6de5..f998c503 100644
  
      // Create the python scripting stuff
      // Skip it for applications that do not use it
-@@ -515,6 +568,7 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+@@ -515,6 +572,7 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
      // TODO(JE): Remove this if apps are refactored to not assume Prj() always works
      // Need to create a project early for now (it can have an empty path for the moment)
      GetSettingsManager().LoadProject( "" );
@@ -966,7 +970,7 @@ index ec1662bb..5804ac99 100644
      if( hasVisibleGlyph && !run.m_bytes.empty() )
          aRuns->push_back( std::move( run ) );
 diff --git a/common/single_top.cpp b/common/single_top.cpp
-index 47e07280..ca827d6a 100644
+index 47e07280..45f36250 100644
 --- a/common/single_top.cpp
 +++ b/common/single_top.cpp
 @@ -34,7 +34,13 @@
@@ -983,7 +987,7 @@ index 47e07280..ca827d6a 100644
  #include <wx/cmdline.h>
  #include <wx/dialog.h>
  #include <wx/filename.h>
-@@ -336,10 +342,28 @@ struct APP_SINGLE_TOP : public wxApp
+@@ -336,10 +342,32 @@ struct APP_SINGLE_TOP : public wxApp
  IMPLEMENT_APP( APP_SINGLE_TOP )
  
  
@@ -991,13 +995,17 @@ index 47e07280..ca827d6a 100644
 +#ifdef KICAD_AMIGA
 +#include <cstdio>
 +#include <cstdlib>
-+// start-up markers on stderr when KICAD_AMIGA_STEPS is set
++// start-up markers, when KICAD_AMIGA_STEPS is set
 +static void AMIGA_STEP( const char* aWhere )
 +{
-+    if( std::getenv( "KICAD_AMIGA_STEPS" ) )
++    // KICAD_AMIGA_STEPS names the file the markers are added to
++    if( const char* name = std::getenv( "KICAD_AMIGA_STEPS" ) )
 +    {
-+        std::fprintf( stderr, "step %s\n", aWhere );
-+        std::fflush( stderr );
++        if( FILE* f = std::fopen( name, "a" ) )
++        {
++            std::fprintf( f, "step %s\n", aWhere );
++            std::fclose( f );
++        }
 +    }
 +}
 +#else
@@ -1012,7 +1020,7 @@ index 47e07280..ca827d6a 100644
  
      if( !wxIsAbsolutePath( absoluteArgv0 ) )
      {
-@@ -350,6 +374,7 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+@@ -350,6 +378,7 @@ bool PGM_SINGLE_TOP::OnPgmInit()
  
      // Initialize the git library before trying to initialize individual programs
      int gitInit = git_libgit2_init();
@@ -1020,7 +1028,7 @@ index 47e07280..ca827d6a 100644
  
      if( gitInit < 0 )
      {
-@@ -366,10 +391,12 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+@@ -366,10 +395,12 @@ bool PGM_SINGLE_TOP::OnPgmInit()
      // Not all KiCad applications use the python stuff. skip python init
      // for these apps.
      bool skip_python_initialization = false;
@@ -1033,7 +1041,7 @@ index 47e07280..ca827d6a 100644
  #endif
  
      if( !InitPgm( false, skip_python_initialization ) )
-@@ -387,21 +414,27 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+@@ -387,21 +418,27 @@ bool PGM_SINGLE_TOP::OnPgmInit()
  
      // Get the getter, it is statically linked into this binary image.
      KIFACE_GETTER_FUNC* ki_getter = &KIFACE_GETTER;
@@ -1061,7 +1069,7 @@ index 47e07280..ca827d6a 100644
  
  
      if( const COMMON_SETTINGS* cfg = Pgm().GetCommonSettings() )
-@@ -415,12 +448,14 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+@@ -415,12 +452,14 @@ bool PGM_SINGLE_TOP::OnPgmInit()
  #ifdef KICAD_IPC_API
      // Create the API server thread once the app event loop exists
      m_api_server = std::make_unique<KICAD_API_SERVER>();
@@ -1076,7 +1084,7 @@ index 47e07280..ca827d6a 100644
  
      if( frame == nullptr )
      {
-@@ -430,30 +465,42 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+@@ -430,30 +469,42 @@ bool PGM_SINGLE_TOP::OnPgmInit()
      }
  
      Kiway.SetTop( frame );
@@ -1119,7 +1127,7 @@ index 47e07280..ca827d6a 100644
  
  
      static const wxCmdLineEntryDesc desc[] = {
-@@ -463,8 +510,11 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+@@ -463,8 +514,11 @@ bool PGM_SINGLE_TOP::OnPgmInit()
      };
  
      wxCmdLineParser parser( App().argc, App().argv );
@@ -1131,7 +1139,7 @@ index 47e07280..ca827d6a 100644
  
      if( parser.GetParamCount() )
      {
-@@ -505,9 +555,11 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+@@ -505,9 +559,11 @@ bool PGM_SINGLE_TOP::OnPgmInit()
          topFrame->PreloadLibraries( &Kiway );
  
      PreloadDesignBlockLibraries( &Kiway );
