@@ -14,28 +14,6 @@
 #include <exec/libraries.h>
 #include <proto/exec.h>
 #include "zlib.h"
-#include <stdio.h>
-
-/* TEMP start-up markers, appended to T:kicad-steps.log */
-static int ZMarks;
-static void z_mark( const char* what, z_streamp strm, long a, long b )
-{
-    FILE* f;
-
-    ZMarks++;
-
-    /* the first 60, then every 2000th, and every inflate that ends badly */
-    if( ZMarks > 60 && ( ZMarks % 2000 ) != 0 && !( what[7] == 'd' && a != 0 ) )
-        return;
-
-    if( ( f = fopen( "T:kicad-steps.log", "a" ) ) )
-    {
-        fprintf( f, "step zlib %s %d in=%lu out=%lu %ld %ld\n", what,
-                 ZMarks, strm ? (unsigned long) strm->avail_in : 0UL,
-                 strm ? (unsigned long) strm->avail_out : 0UL, a, b );
-        fclose( f );
-    }
-}
 
 static struct Library* ZBase;
 static int             ZTried;
@@ -319,12 +297,8 @@ int inflateInit_( z_streamp strm, const char* version, int stream_size )
 
 int inflate( z_streamp strm, int flush )
 {
-    int r;
     BASE_OR( Z_STREAM_ERROR )
-    z_mark( "inflate", strm, flush, 0 );
-    r = (int) Z_A0D0( -60, strm, flush );
-    z_mark( "inflated", strm, r, 0 );
-    return r;
+    return (int) Z_A0D0( -60, strm, flush );
 }
 
 int inflateEnd( z_streamp strm )
@@ -412,14 +386,8 @@ int inflateInit2_( z_streamp strm, int windowBits, const char* version, int stre
     if( !strm )
         return Z_STREAM_ERROR;
 
-    {
-        int r;
-        BASE_OR( Z_MEM_ERROR )
-        z_mark( "inflateInit2", strm, windowBits, (long) base->lib_Version );
-        r = (int) Z_A0D0( -102, strm, windowBits );
-        z_mark( "inflateInit2 done", strm, r, 0 );
-        return r;
-    }
+    BASE_OR( Z_MEM_ERROR )
+    return (int) Z_A0D0( -102, strm, windowBits );
 }
 
 int inflateSetDictionary( z_streamp strm, const Bytef* dictionary, uInt dictLength )
