@@ -307,10 +307,15 @@ index 0144ac4f..e8569968 100644
      message( STATUS "Including 3Dconnexion SpaceMouse navigation support in pcbcommon" )
      add_subdirectory( ../pcbnew/navlib ./navlib)
 diff --git a/common/asset_archive.cpp b/common/asset_archive.cpp
-index cc2a7c8f..88a00a54 100644
+index cc2a7c8f..ce039fb7 100644
 --- a/common/asset_archive.cpp
 +++ b/common/asset_archive.cpp
-@@ -23,6 +23,14 @@
+@@ -20,9 +20,19 @@
+ #include <wx/tarstrm.h>
+ #include <wx/wfstream.h>
+ #include <wx/zstream.h>
++#include <wx/datetime.h>
++#include <wx/crt.h>
  
  #include <asset_archive.h>
  
@@ -325,7 +330,7 @@ index cc2a7c8f..88a00a54 100644
  
  ASSET_ARCHIVE::ASSET_ARCHIVE( const wxString& aFilePath, bool aLoadNow ) :
          m_filePath( aFilePath )
-@@ -38,22 +46,39 @@ bool ASSET_ARCHIVE::Load()
+@@ -38,22 +48,81 @@ bool ASSET_ARCHIVE::Load()
      if( !m_fileInfoCache.empty() )
          return false;
  
@@ -348,6 +353,48 @@ index cc2a7c8f..88a00a54 100644
      size_t offset = 0;
 +    AMIGA_MARK( "asset cache sized" );
 +#ifdef KICAD_AMIGA
++    {
++        // TEMP probe: the first tar header, by hand, then each wx step the tar reader takes
++        char amigaBuf[200];
++        wxFFileInputStream probeFile( m_filePath );
++        wxZlibInputStream  probeZ( probeFile, wxZLIB_GZIP );
++        unsigned char      hdr[512];
++
++        probeZ.Read( hdr, sizeof( hdr ) );
++        unsigned long sum = 0;
++
++        for( int i = 0; i < 512; i++ )
++            sum += ( i >= 148 && i < 156 ) ? ' ' : hdr[i];
++
++        std::snprintf( amigaBuf, sizeof( amigaBuf ), "probe read %lu sum %lu chk %.8s type %c magic %.6s",
++                       (unsigned long) probeZ.LastRead(), sum, (const char*) hdr + 148, hdr[156],
++                       (const char*) hdr + 257 );
++        AMIGA_MARK( amigaBuf );
++
++        wxString nameLocal( (const char*) hdr, wxConvLocal, 100 );
++        AMIGA_MARK( "probe conv local" );
++        wxString nameUtf8( (const char*) hdr, wxConvUTF8, 100 );
++        AMIGA_MARK( "probe conv utf8" );
++        wxString nameLibc( (const char*) hdr, wxConvLibc, 100 );
++        AMIGA_MARK( "probe conv libc" );
++        wxString nameCurrent( (const char*) hdr, *wxConvCurrent, 100 );
++        AMIGA_MARK( "probe conv current" );
++        wxDateTime when( wxLongLong( 1700000000L ) * 1000L );
++        AMIGA_MARK( "probe datetime" );
++        double d = wxAtof( wxT( "1700000000.5" ) );
++        AMIGA_MARK( d > 1 ? "probe atof" : "probe atof zero" );
++        wxTarEntry probeEntry;
++        AMIGA_MARK( "probe entry made" );
++        probeEntry.SetDateTime( when );
++        AMIGA_MARK( "probe entry date" );
++        probeEntry.SetName( nameUtf8, wxPATH_UNIX );
++        AMIGA_MARK( "probe entry name" );
++        std::snprintf( amigaBuf, sizeof( amigaBuf ), "probe name %s",
++                       (const char*) probeEntry.GetName().utf8_str() );
++        AMIGA_MARK( amigaBuf );
++    }
++#endif
++#ifdef KICAD_AMIGA
 +    int amigaCount = 0;
 +#endif
  
@@ -365,7 +412,7 @@ index cc2a7c8f..88a00a54 100644
          if( entry->IsDir() )
          {
              delete entry;
-@@ -74,11 +99,21 @@ bool ASSET_ARCHIVE::Load()
+@@ -74,11 +143,21 @@ bool ASSET_ARCHIVE::Load()
          m_fileInfoCache[entry->GetName()] = fi;
  
          offset += length;
