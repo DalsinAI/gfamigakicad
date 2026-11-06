@@ -52,8 +52,8 @@ fi
 
 B="$WORK/kicad-build"
 # configured again when the tree it was configured from moves, or this
-# script (its configure line) changes
-HERE_STAMP="$HERE $(sha256sum "$0" | cut -d' ' -f1)"
+# script (its configure line) or the toolkit changes
+HERE_STAMP="$HERE $(sha256sum "$0" | cut -d' ' -f1) $TOOLKIT_COMMIT"
 if [ ! -f "$B/build.ninja" ] || [ "${RECONFIGURE:-0}" = 1 ] \
    || [ "$(cat "$B/.gfamiga-here" 2>/dev/null || true)" != "$HERE_STAMP" ]; then
     cmake -S "$SRC" -B "$B" -G Ninja \
