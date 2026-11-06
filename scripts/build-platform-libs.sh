@@ -12,18 +12,19 @@
 #   libcurl            DalsinAI/gfopencurl build.sh (HTTP/HTTPS, GFOpenTLS)
 #
 #   TC=<compiler prefix> WORK=<build folder> WXSDK=<toolkit sdk/>
-#   NDK=<OpenNDK Include_H> ./build-platform-libs.sh
+#   [NDK=<OpenNDK Include_H, when the compiler has none>] [UPSTREAM_TARBALLS=<folder
+#   holding the upstream tarballs, used before downloading>] ./build-platform-libs.sh
 # Result: $WORK/platform/{include,lib}, the SYSLIBS that build-kicad.sh takes.
 # Copyright (c) 2026 AmiCradle Team
 set -eu
 HERE=$(cd "$(dirname "$0")/.." && pwd)
 . "$HERE/deps.lock"
-TC=${TC:?}; WORK=${WORK:?}; WXSDK=${WXSDK:?}; NDK=${NDK:?}
+TC=${TC:?}; WORK=${WORK:?}; WXSDK=${WXSDK:?}; NDK=${NDK:-}
 DL=${DL:-$WORK/dl}; JOBS=${JOBS:-$(nproc)}
 PLAT=$WORK/platform; SRC=$WORK/platform-src
 mkdir -p "$DL" "$PLAT/include" "$PLAT/lib" "$SRC"
 CC="$TC/bin/m68k-amigaos-gcc"; CXX="$TC/bin/m68k-amigaos-g++"; AR="$TC/bin/m68k-amigaos-ar"
-CPU="-m68040 -noixemul -idirafter $NDK"
+CPU="-m68040 -noixemul${NDK:+ -idirafter $NDK}"
 CFLAGS="-O2 $CPU -fno-delete-null-pointer-checks -D_DEFAULT_SOURCE=1 -fno-common"
 # the ports' scripts take the compiler root (holding prefix/) and CPU flags
 export OS32_GCC16="$(dirname "$TC")" OS32_CPU_FLAGS="$CPU" JOBS
@@ -34,6 +35,9 @@ mark() { echo "$2" > "$PLAT/.$1"; }
 
 fetch() { # url sha256 [name] -> $DL/<name>
     f="$DL/${3:-$(basename "$1")}"
+    if [ -n "${UPSTREAM_TARBALLS:-}" ] && [ -f "$UPSTREAM_TARBALLS/$(basename "$f")" ] && [ ! -f "$f" ]; then
+        cp "$UPSTREAM_TARBALLS/$(basename "$f")" "$f"
+    fi
     if [ ! -f "$f" ] || [ "$(sha256sum "$f" | cut -d' ' -f1)" != "$2" ]; then
         curl -fsSL --retry 3 -o "$f.part" "$1"; mv "$f.part" "$f"
     fi

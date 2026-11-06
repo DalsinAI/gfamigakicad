@@ -1,0 +1,73 @@
+#!/bin/sh
+# KiCad for AmigaOS 3 (68040, soft float) on a Cradle stove:
+#   STOVE=.../stoves/os32-gcc16-open6 OUT=out ./build-amiga.sh
+# Everything is built in WORK and kept there, so a stove job that runs out of
+# time is simply run again: each step that finished is skipped, and the KiCad
+# compile carries on where it stopped. The script stops by itself before the
+# stove's limit and says "not finished, run again" (exit 3).
+# Copyright (c) 2026 AmiCradle Team
+set -eu
+HERE=$(cd "$(dirname "$0")" && pwd)
+. "$HERE/deps.lock"
+START=$(date +%s)
+STOVE=${STOVE:-"$HOME/AmiCradle/stoves/os32-gcc16-open6"}
+WORK=${WORK:-"$HOME/AmiCradle-dev/cradle-builds/lab-cache/gfamigakicad"}
+OUT=${OUT:-"$WORK/out"}; JOBS=${JOBS:-12}
+LIMIT=${LIMIT:-840}   # seconds this run may take (the stove allows 900)
+# the upstream tarballs kept on the dev machine, used before downloading
+UPSTREAM_TARBALLS=${UPSTREAM_TARBALLS:-/run/media/da1ek/WorkingSpace/AmigaChrome/team4/salvor-offload-20261012/dev/upstream-tarballs}
+TC="$STOVE/prefix"
+mkdir -p "$WORK" "$OUT"
+export UPSTREAM_TARBALLS JOBS
+left() { echo $((LIMIT - ($(date +%s) - START))); }
+step() { echo "kicad-amiga: $* ($(( $(date +%s) - START )) s)"; }
+again() { step "not finished, run again"; exit 3; }
+
+# ---- the GFOpenWX Toolkit SDK at the pinned commit
+WX="$WORK/wx"
+if [ "$(cat "$WX/.commit" 2>/dev/null || true)" != "$TOOLKIT_COMMIT" ]; then
+    step "toolkit $TOOLKIT_COMMIT"
+    S="$WORK/src/gfopenwxtoolkit"
+    if [ "$(git -C "$S" rev-parse HEAD 2>/dev/null || true)" != "$TOOLKIT_COMMIT" ]; then
+        rm -rf "$S"; git init -q "$S"
+        git -C "$S" fetch -q --depth 1 "$TOOLKIT_REPO" "$TOOLKIT_COMMIT"; git -C "$S" checkout -q FETCH_HEAD
+    fi
+    mkdir -p "$WX"
+    STOVE="$STOVE" WORK="$WX" OUT="$WX/out" JOBS=$JOBS sh "$S/build-amiga.sh" > "$WORK/toolkit.log" 2>&1 \
+        || { tail -30 "$WORK/toolkit.log"; exit 1; }
+    echo "$TOOLKIT_COMMIT" > "$WX/.commit"
+fi
+WXSDK="$WX/out/sdk"; WXSRC=$(ls -d "$WX"/wxWidgets-* | head -1)
+[ "$(left)" -gt 120 ] || again
+
+# ---- Boost.Locale, protobuf, libgit2, zstd, GLM and the host tools
+step "dependencies"
+TC="$TC" WORK="$WORK" sh "$HERE/scripts/build-deps.sh" > "$WORK/deps.log" 2>&1 || { tail -30 "$WORK/deps.log"; exit 1; }
+[ "$(left)" -gt 120 ] || again
+
+# ---- the platform libraries, soft float, from the Team's ports
+step "platform libraries"
+NDK=
+[ -d "$TC/m68k-amigaos/ndk-include" ] || NDK="$WORK/src/opensdk/OpenNDK/Include_H"
+TC="$TC" WORK="$WORK" WXSDK="$WXSDK" WXSRC="$WXSRC" NDK="$NDK" sh "$HERE/scripts/build-platform-libs.sh" \
+    > "$WORK/platform.log" 2>&1 || { tail -30 "$WORK/platform.log"; exit 1; }
+[ "$(left)" -gt 120 ] || again
+
+# ---- KiCad, for what time is left
+step "kicad"
+rc=0
+TC="$TC" WORK="$WORK" WXSDK="$WXSDK" SYSLIBS="$WORK/platform" \
+    timeout "$(( $(left) - 30 ))" sh "$HERE/scripts/build-kicad.sh" > "$WORK/kicad.log" 2>&1 || rc=$?
+grep -E '^FAILED|error:|undefined reference' "$WORK/kicad.log" | sort -u | head -60 || true
+tail -5 "$WORK/kicad.log"
+[ "$rc" = 124 ] && again
+[ "$rc" = 0 ] || exit 1
+
+# ---- the programs
+B="$WORK/kicad-build"
+for p in kicad/kicad kicad/kicad-cli eeschema/eeschema pcbnew/pcbnew gerbview/gerbview \
+         pagelayout_editor/pl_editor bitmap2component/bitmap2component pcb_calculator/pcb_calculator; do
+    [ -f "$B/$p" ] && cp "$B/$p" "$OUT/"
+done
+ls -l "$OUT"
+step "done"
