@@ -113,6 +113,10 @@ done
     -I"$HERE/compat/include" -I"$WORK/kicad-src/thirdparty/thread-pool" -o "$OUT/pooltest" \
     "$HERE/tests/pooltest.cpp" -L"$WORK/deps/lib" -lgfamiga_compat -latomic \
     || echo "kicad-amiga: pooltest did not build"
+# the random device check (tests/rdtest.cpp), linked the way the programs are
+"$TC/bin/m68k-amigaos-g++" -O2 -m68040 -noixemul -o "$OUT/rdtest" "$HERE/tests/rdtest.cpp" \
+    -Wl,--wrap=open -Wl,--wrap=read -Wl,--wrap=close "$WORK/deps/lib/gfamiga_random.o" -lpthread \
+    || echo "kicad-amiga: rdtest did not build"
 # what the programs read from PROGDIR:share/kicad: the toolbar and menu
 # images, the settings schemas and the new project template
 S="$OUT/share/kicad"; rm -rf "$S"; mkdir -p "$S/resources" "$S/schemas" "$S/template"
