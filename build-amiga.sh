@@ -36,7 +36,7 @@ if [ "$(cat "$WX/.commit" 2>/dev/null || true)" != "$TOOLKIT_COMMIT" ]; then
     rc=0
     STOVE="$STOVE" WORK="$WX" OUT="$WX/out" JOBS=$JOBS timeout "$(left)" sh "$S/build-amiga.sh" \
         > "$WORK/toolkit.log" 2>&1 || rc=$?
-    [ "$rc" = 124 ] && again
+    [ "$rc" = 124 ] && { tail -8 "$WORK/toolkit.log"; again; }
     [ "$rc" = 0 ] || { tail -30 "$WORK/toolkit.log"; exit 1; }
     echo "$TOOLKIT_COMMIT" > "$WX/.commit"
 fi
