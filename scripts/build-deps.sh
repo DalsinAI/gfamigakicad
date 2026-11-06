@@ -32,8 +32,12 @@ rm -f "$DEPS/lib/libgfamiga_compat.a"; $AR rcs "$DEPS/lib/libgfamiga_compat.a" "
 
 fetch() { # name url sha256 -> $DL/<file>
     f="$DL/$(basename "$2")"
+    # the upstream tarballs kept on the dev machine come first
+    if [ -n "${UPSTREAM_TARBALLS:-}" ] && [ -f "$UPSTREAM_TARBALLS/$(basename "$f")" ] && [ ! -f "$f" ]; then
+        cp "$UPSTREAM_TARBALLS/$(basename "$f")" "$f"
+    fi
     if [ ! -f "$f" ] || [ "$(sha256sum "$f" | cut -d' ' -f1)" != "$3" ]; then
-        log "fetch $1"
+        log "fetch $1" >&2
         curl -fsSL --retry 3 -o "$f.part" "$2"
         mv "$f.part" "$f"
     fi
