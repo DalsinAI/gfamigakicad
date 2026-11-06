@@ -11,6 +11,8 @@
 #include <wx/defs.h>
 #include <wx/string.h>
 #include <wx/snglinst.h>
+#include <wx/log.h>
+#include <wx/menu.h>
 
 #if !wxUSE_SNGLINST_CHECKER
 /* wxSingleInstanceChecker on a named public message port: the first copy
@@ -109,6 +111,100 @@ public:
         return 0;
     }
     void SetOwner( wxEvtHandler* ) {}
+};
+// pcb_base_frame.h and sch_base_frame.h name the watcher class for each
+// platform; with no native watcher they pick the polling one
+class wxPollingFileSystemWatcher : public wxFileSystemWatcher {};
+#endif
+
+#include <wx/glcanvas.h>
+
+#if !wxUSE_GLCANVAS
+/* No OpenGL canvas in the toolkit yet. These stand-ins let KiCad's 3D
+   viewer compile; IsDisplaySupported() is false and no context is ever OK,
+   so nothing draws through them. Drawing panels use the Cairo canvas. */
+#include <wx/window.h>
+#include <wx/palette.h>
+#include <vector>
+
+class wxGLAttribsBase
+{
+public:
+    void AddAttribute( int aAttribute ) { m_values.push_back( aAttribute ); }
+    void Reset() { m_values.clear(); }
+    const int* GetGLAttrs() const { return m_values.empty() ? nullptr : &m_values[0]; }
+    int GetSize() const { return (int) m_values.size(); }
+
+private:
+    std::vector<int> m_values;
+};
+
+class wxGLAttributes : public wxGLAttribsBase
+{
+public:
+    wxGLAttributes& RGBA() { return *this; }
+    wxGLAttributes& BufferSize( int ) { return *this; }
+    wxGLAttributes& Level( int ) { return *this; }
+    wxGLAttributes& DoubleBuffer() { return *this; }
+    wxGLAttributes& Stereo() { return *this; }
+    wxGLAttributes& AuxBuffers( int ) { return *this; }
+    wxGLAttributes& MinRGBA( int, int, int, int ) { return *this; }
+    wxGLAttributes& Depth( int ) { return *this; }
+    wxGLAttributes& Stencil( int ) { return *this; }
+    wxGLAttributes& MinAcumRGBA( int, int, int, int ) { return *this; }
+    wxGLAttributes& PlatformDefaults() { return *this; }
+    wxGLAttributes& Defaults() { return *this; }
+    wxGLAttributes& SampleBuffers( int ) { return *this; }
+    wxGLAttributes& Samplers( int ) { return *this; }
+    wxGLAttributes& FrameBuffersRGB() { return *this; }
+    void EndList() {}
+};
+
+class wxGLContextAttrs : public wxGLAttribsBase
+{
+public:
+    wxGLContextAttrs& CoreProfile() { return *this; }
+    wxGLContextAttrs& MajorVersion( int ) { return *this; }
+    wxGLContextAttrs& MinorVersion( int ) { return *this; }
+    wxGLContextAttrs& OGLVersion( int, int ) { return *this; }
+    wxGLContextAttrs& CompatibilityProfile() { return *this; }
+    wxGLContextAttrs& ForwardCompatible() { return *this; }
+    wxGLContextAttrs& PlatformDefaults() { return *this; }
+    void EndList() {}
+};
+
+class wxGLContext;
+
+inline constexpr const char wxGLCanvasName[] = "GLCanvas";
+
+class wxGLCanvas : public wxWindow
+{
+public:
+    wxGLCanvas( wxWindow* aParent, const wxGLAttributes&, wxWindowID aId = wxID_ANY,
+                const wxPoint& aPos = wxDefaultPosition, const wxSize& aSize = wxDefaultSize,
+                long aStyle = 0, const wxString& aName = wxGLCanvasName,
+                const wxPalette& = wxNullPalette ) :
+            wxWindow( aParent, aId, aPos, aSize, aStyle, aName )
+    {
+    }
+
+    bool SetCurrent( const wxGLContext& ) const { return false; }
+    bool SwapBuffers() { return false; }
+
+    static bool IsDisplaySupported( const wxGLAttributes& ) { return false; }
+    static bool IsDisplaySupported( const int* ) { return false; }
+    static bool IsExtensionSupported( const char* ) { return false; }
+    static bool SetSwapInterval( int ) { return false; }
+};
+
+class wxGLContext : public wxObject
+{
+public:
+    explicit wxGLContext( wxGLCanvas*, const wxGLContext* = nullptr,
+                          const wxGLContextAttrs* = nullptr ) {}
+
+    bool SetCurrent( const wxGLCanvas& ) const { return false; }
+    bool IsOK() const { return false; }
 };
 #endif
 

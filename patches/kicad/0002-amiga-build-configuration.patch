@@ -12,10 +12,10 @@ index 25324fce..981688e3 100644
      add_subdirectory( 3d_spacenav )
      target_link_libraries( 3d-viewer PRIVATE 3d-viewer_spacenav )
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 420f18bc..6f6614ec 100644
+index 420f18bc..f4579e3e 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -107,6 +107,19 @@ endif()
+@@ -107,6 +107,21 @@ endif()
  ####################################
  # Feature flags
  ####################################
@@ -29,13 +29,15 @@ index 420f18bc..6f6614ec 100644
 +    add_compile_definitions( KICAD_AMIGA )
 +    # wx classes the GFOpenWX Toolkit does not build yet (amiga/amiga_wx_compat.h)
 +    include_directories( ${CMAKE_SOURCE_DIR}/amiga )
++    # GL/gl.h and GL/glu.h until the toolkit has an OpenGL canvas
++    include_directories( ${CMAKE_SOURCE_DIR}/amiga/glstub ${CMAKE_SOURCE_DIR}/thirdparty/glad/include )
 +    add_compile_options( "$<$<COMPILE_LANGUAGE:CXX>:SHELL:-include amiga_wx_compat.h>" )
 +endif()
 +
  option( KICAD_SPICE_QA
      "Build software Quality assurance unit tests for spice (default ON)"
      ON )
-@@ -831,7 +844,7 @@ find_package(ZSTD REQUIRED)
+@@ -831,7 +846,7 @@ find_package(ZSTD REQUIRED)
  #
  find_package( CURL REQUIRED )
  
@@ -44,7 +46,7 @@ index 420f18bc..6f6614ec 100644
      find_package( SPNAV REQUIRED )
      include_directories( SYSTEM ${SPNAV_INCLUDE_DIR} )
  endif()
-@@ -884,8 +897,17 @@ include( MinGWResourceCompiler )
+@@ -884,8 +899,17 @@ include( MinGWResourceCompiler )
  find_package( ngspice REQUIRED )
  
  # Find OpenCascade, required for STEP plugin and tools
@@ -63,7 +65,7 @@ index 420f18bc..6f6614ec 100644
      MESSAGE( FATAL_ERROR "================================================================\n"
                           " OpenCASCADE was not found!\n"
                           "================================================================\n")
-@@ -954,9 +976,11 @@ set( INC_AFTER
+@@ -954,9 +978,11 @@ set( INC_AFTER
  # Find Python and other scripting resources
  #
  
@@ -75,7 +77,7 @@ index 420f18bc..6f6614ec 100644
  
  set( PythonInterp_FIND_VERSION 3.6 )
  set( PythonLibs_FIND_VERSION 3.6 )
-@@ -1014,7 +1038,14 @@ else()
+@@ -1014,7 +1040,14 @@ else()
  endif()
  message( STATUS "Python module install path: ${PYTHON_DEST}" )
  
@@ -90,7 +92,7 @@ index 420f18bc..6f6614ec 100644
  
  # pybind11 is header-only, so include the subdir
  # USE_CROSSCOMPILING is needed to avoid pybind11 trying to run a non-native intrepreter
-@@ -1075,6 +1106,8 @@ if( WXWIDGETS_REQUESTED_TOOLKIT
+@@ -1075,6 +1108,8 @@ if( WXWIDGETS_REQUESTED_TOOLKIT
      message( WARNING "wxWidgets and wxPython must be based on the same toolkit.\n"
          "It will be fixed automatically if you skip the '--toolkit=xxx' "
          "wxWidgets_CONFIG_OPTIONS parameter.")
@@ -99,7 +101,7 @@ index 420f18bc..6f6614ec 100644
  elseif( UNIX AND NOT APPLE )
      # Force the use of GTK3 on Linux
      set( wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} "--toolkit=gtk3" )
-@@ -1091,9 +1124,14 @@ else()
+@@ -1091,9 +1126,14 @@ else()
  endif()
  
  # See line 49 of cmake/FindwxWidgets.cmake
@@ -114,7 +116,7 @@ index 420f18bc..6f6614ec 100644
  
  # Include wxWidgets macros.
  include( ${wxWidgets_USE_FILE} )
-@@ -1108,7 +1146,7 @@ if( wxWidgets_FIND_STYLE STREQUAL "win32" )
+@@ -1108,7 +1148,7 @@ if( wxWidgets_FIND_STYLE STREQUAL "win32" )
          add_compile_definitions( __WXGTK__ )
      endif()
  elseif( _wx_selected_config )
@@ -123,7 +125,7 @@ index 420f18bc..6f6614ec 100644
  endif()
  
  if( KICAD_WX_PORT )
-@@ -1138,7 +1176,9 @@ message(STATUS "wxHAS_GLX=${wxWidgets_HAS_GLX}")
+@@ -1138,7 +1178,9 @@ message(STATUS "wxHAS_GLX=${wxWidgets_HAS_GLX}")
  message(STATUS "wxHAS_EGL=${wxWidgets_HAS_EGL}")
  
  # Find OpenGL with GLU
@@ -150,31 +152,21 @@ index 8daf035a..3bc70266 100644
          set( KICAD_BUILD_ARCH_ARM64 1 )
      elseif( CMAKE_SYSTEM_PROCESSOR MATCHES "arm|ARM" )
 diff --git a/common/CMakeLists.txt b/common/CMakeLists.txt
-index 0144ac4f..1e0fa543 100644
+index 0144ac4f..ddfe135f 100644
 --- a/common/CMakeLists.txt
 +++ b/common/CMakeLists.txt
-@@ -97,8 +97,8 @@ set( KICOMMON_SRCS
-     gal/color4d.cpp
- 
-     # KiCad GL
--    kicad_gl/gl_utils.cpp
--    kicad_gl/gl_context_mgr.cpp
-+    $<$<NOT:$<BOOL:${KICAD_AMIGA}>>:kicad_gl/gl_utils.cpp>
-+    $<$<NOT:$<BOOL:${KICAD_AMIGA}>>:kicad_gl/gl_context_mgr.cpp>
- 
-     # Git
-     git/git_add_to_index_handler.cpp
-@@ -315,7 +315,8 @@ set( KICOMMON_SRCS
+@@ -315,7 +315,9 @@ set( KICOMMON_SRCS
      singleton.cpp
      pgm_base.cpp
  
 -    ../scripting/python_scripting.cpp
 +    $<IF:$<BOOL:${KICAD_AMIGA}>,${CMAKE_SOURCE_DIR}/amiga/python_scripting_none.cpp,../scripting/python_scripting.cpp>
 +    $<$<BOOL:${KICAD_AMIGA}>:${CMAKE_SOURCE_DIR}/amiga/amiga_wx_compat.cpp>
++    $<$<BOOL:${KICAD_AMIGA}>:${CMAKE_SOURCE_DIR}/amiga/glu_none.cpp>
  
      io/kicad/kicad_io_utils.cpp    # needed by richio
      io/io_base.cpp
-@@ -331,7 +332,7 @@ set( KICOMMON_SRCS
+@@ -331,7 +333,7 @@ set( KICOMMON_SRCS
      startwizard/startwizard_provider_settings.cpp
      )
  
@@ -183,7 +175,7 @@ index 0144ac4f..1e0fa543 100644
      list( APPEND KICOMMON_SRCS
          spacenav/libspnav_driver.cpp
      )
-@@ -855,7 +856,7 @@ set( COMMON_SRCS
+@@ -855,7 +857,7 @@ set( COMMON_SRCS
      properties/property_mgr.cpp
      properties/std_optional_variants.cpp
  
@@ -192,7 +184,7 @@ index 0144ac4f..1e0fa543 100644
  
      http_lib/http_lib_connection.cpp
      http_lib/http_lib_settings.cpp
-@@ -864,7 +865,7 @@ set( COMMON_SRCS
+@@ -864,7 +866,7 @@ set( COMMON_SRCS
      )
  
  # This needs to be in the common library until draw_panel_gal is moved to kicommon
@@ -201,7 +193,7 @@ index 0144ac4f..1e0fa543 100644
      list( APPEND COMMON_SRCS
          spacenav/spnav_2d_plugin.cpp
      )
-@@ -926,7 +927,7 @@ target_link_libraries( common
+@@ -926,7 +928,7 @@ target_link_libraries( common
      compoundfilereader
      Boost::headers
      # Database support needs these two
@@ -210,7 +202,7 @@ index 0144ac4f..1e0fa543 100644
      Boost::locale
      ${wxWidgets_LIBRARIES}
      ${EXTRA_LIBS}
-@@ -963,9 +964,11 @@ target_include_directories( common PUBLIC
+@@ -963,9 +965,11 @@ target_include_directories( common PUBLIC
      $<TARGET_PROPERTY:magic_enum,INTERFACE_INCLUDE_DIRECTORIES>
      )
  
@@ -351,7 +343,7 @@ index 5c1423fd..18dae543 100644
  
          case GAL_TYPE_CAIRO:
 diff --git a/common/gal/CMakeLists.txt b/common/gal/CMakeLists.txt
-index 19537f46..65c043b8 100644
+index 19537f46..257029a1 100644
 --- a/common/gal/CMakeLists.txt
 +++ b/common/gal/CMakeLists.txt
 @@ -53,6 +53,11 @@ set( GAL_SRCS
@@ -360,7 +352,7 @@ index 19537f46..65c043b8 100644
  
 +if( KICAD_AMIGA )
 +    # No wxGLCanvas in the GFOpenWX Toolkit yet: the Cairo GAL draws everything
-+    list( FILTER GAL_SRCS EXCLUDE REGEX "hidpi_gl_|opengl/" )
++    list( FILTER GAL_SRCS EXCLUDE REGEX "opengl/" )
 +endif()
 +
  add_library( gal SHARED ${GAL_SRCS} )
@@ -396,34 +388,6 @@ index 39e976b9..be106671 100644
      // Install a temporary SIGABRT handler to recover from abort() calls triggered by
      // buggy 3Dconnexion drivers. The driver on some macOS versions calls std::terminate()
      // from a noexcept context inside NlCreate, which calls abort(). By catching SIGABRT
-diff --git a/common/preview_items/preview_utils.cpp b/common/preview_items/preview_utils.cpp
-index 93687264..10cfafb7 100644
---- a/common/preview_items/preview_utils.cpp
-+++ b/common/preview_items/preview_utils.cpp
-@@ -22,7 +22,9 @@
- #include <base_units.h>
- #include <gal/painter.h>
- #include <view/view.h>
-+#ifndef KICAD_AMIGA
- #include <gal/hidpi_gl_canvas.h>
-+#endif
- 
- double KIGFX::PREVIEW::PreviewOverlayDeemphAlpha( bool aDeemph )
- {
-@@ -81,9 +83,13 @@ KIGFX::PREVIEW::TEXT_DIMS KIGFX::PREVIEW::GetConstantGlyphHeight( KIGFX::GAL* aG
-     double shadowFactor;
-     double linePitchFactor;
- 
-+#ifdef KICAD_AMIGA
-+    if( false )
-+#else
-     HIDPI_GL_CANVAS* canvas = dynamic_cast<HIDPI_GL_CANVAS*>( aGal );
- 
-     if( canvas && canvas->GetScaleFactor() > 1 )
-+#endif
-     {
-         height = hdpiSizes[ 3 + aRelativeSize ];
-         thicknessFactor = 0.15;
 diff --git a/common/single_top.cpp b/common/single_top.cpp
 index 47e07280..350e2679 100644
 --- a/common/single_top.cpp
@@ -437,35 +401,10 @@ index 47e07280..350e2679 100644
  #include <wx/dialog.h>
  #include <wx/filename.h>
 diff --git a/common/singleton.cpp b/common/singleton.cpp
-index df61f3ca..b4691f29 100644
+index df61f3ca..1d58e28f 100644
 --- a/common/singleton.cpp
 +++ b/common/singleton.cpp
-@@ -20,7 +20,9 @@
- #include <singleton.h>
- #include <advanced_config.h>
- #include <bs_thread_pool.hpp>
-+#ifndef KICAD_AMIGA
- #include <kicad_gl/gl_context_mgr.h>
-+#endif
- #include <thread_pool.h>
- 
- 
-@@ -46,12 +48,14 @@ void KICAD_SINGLETON::Shutdown()
-         InvalidateKiCadThreadPool();
-     }
- 
-+#ifndef KICAD_AMIGA
-     if( m_GLContextManager )
-     {
-         m_GLContextManager->DeleteAll();
-         delete m_GLContextManager;
-         m_GLContextManager = nullptr;
-     }
-+#endif
- }
- 
- 
-@@ -59,6 +63,7 @@ void KICAD_SINGLETON::Init()
+@@ -59,6 +59,7 @@ void KICAD_SINGLETON::Init()
  {
      int num_threads = std::max( 0, ADVANCED_CFG::GetCfg().m_MaximumThreads );
  
@@ -473,7 +412,7 @@ index df61f3ca..b4691f29 100644
      m_ThreadPool = new BS::priority_thread_pool( num_threads,
                                                   []
                                                   {
-@@ -66,6 +71,14 @@ void KICAD_SINGLETON::Init()
+@@ -66,6 +67,10 @@ void KICAD_SINGLETON::Init()
                                                       BS::this_thread::set_os_thread_priority(
                                                               BS::os_thread_priority::below_normal );
                                                   } );
@@ -482,11 +421,7 @@ index df61f3ca..b4691f29 100644
 +    m_ThreadPool = new BS::priority_thread_pool( num_threads );
 +#endif
  
-+#ifdef KICAD_AMIGA
-+    m_GLContextManager = nullptr;  // no OpenGL canvas on the Amiga yet
-+#else
      m_GLContextManager = new GL_CONTEXT_MANAGER();
-+#endif
  }
 diff --git a/common/widgets/wx_aui_art_providers.cpp b/common/widgets/wx_aui_art_providers.cpp
 index c23c3b13..88d46f45 100644
@@ -500,6 +435,34 @@ index c23c3b13..88d46f45 100644
  #include <wx/aui/aui.h>
  #include <wx/aui/framemanager.h>
  #include <wx/aui/auibook.h>
+diff --git a/eeschema/sch_io/database/sch_io_database.cpp b/eeschema/sch_io/database/sch_io_database.cpp
+index ef973069..bd7b0eaa 100644
+--- a/eeschema/sch_io/database/sch_io_database.cpp
++++ b/eeschema/sch_io/database/sch_io_database.cpp
+@@ -479,7 +479,9 @@ void SCH_IO_DATABASE::stopBackgroundRefresh()
+ 
+ void SCH_IO_DATABASE::backgroundRefreshWorker()
+ {
++#ifdef BS_THREAD_POOL_NATIVE_EXTENSIONS
+     BS::this_thread::set_os_thread_name( "dblib bg" );
++#endif
+ 
+     while( m_refreshRunning.load() )
+     {
+diff --git a/eeschema/sch_io/http_lib/sch_io_http_lib.cpp b/eeschema/sch_io/http_lib/sch_io_http_lib.cpp
+index 09fb5e16..02bce0ec 100644
+--- a/eeschema/sch_io/http_lib/sch_io_http_lib.cpp
++++ b/eeschema/sch_io/http_lib/sch_io_http_lib.cpp
+@@ -97,7 +97,9 @@ void SCH_IO_HTTP_LIB::startBackgroundRefresh()
+ 
+ void SCH_IO_HTTP_LIB::backgroundRefreshWorker()
+ {
++#ifdef BS_THREAD_POOL_NATIVE_EXTENSIONS
+     BS::this_thread::set_os_thread_name( "httplib bg" );
++#endif
+ 
+     while( m_refreshRunning.load() )
+     {
 diff --git a/include/kicad_curl/kicad_curl.h b/include/kicad_curl/kicad_curl.h
 index 9526e70f..d0b6fd80 100644
 --- a/include/kicad_curl/kicad_curl.h
@@ -591,6 +554,18 @@ index 2873b07b..61fde7b8 100644
  #else
          bool res = ( 0 == ::mprotect( aAddress, aGuardSize, PROT_NONE ) );
  #endif
+diff --git a/kicad/dialogs/dialog_template_selector.cpp b/kicad/dialogs/dialog_template_selector.cpp
+index d39b00bd..c9aca562 100644
+--- a/kicad/dialogs/dialog_template_selector.cpp
++++ b/kicad/dialogs/dialog_template_selector.cpp
+@@ -22,6 +22,7 @@
+  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
+ 
++#include <wx/log.h>
+ #include "dialog_template_selector.h"
+ #include <bitmaps.h>
+ #include <kiplatform/environment.h>
 diff --git a/libs/kiplatform/CMakeLists.txt b/libs/kiplatform/CMakeLists.txt
 index 5d8dd529..f8b4451e 100644
 --- a/libs/kiplatform/CMakeLists.txt
@@ -693,10 +668,38 @@ index 68928f4e..1c34d3db 100644
  
  
 diff --git a/pcbnew/CMakeLists.txt b/pcbnew/CMakeLists.txt
-index 276772bb..93a636ed 100644
+index 276772bb..7746f9cd 100644
 --- a/pcbnew/CMakeLists.txt
 +++ b/pcbnew/CMakeLists.txt
-@@ -615,7 +615,7 @@ add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/pcb
+@@ -279,6 +279,12 @@ set( PCBNEW_EXPORTERS
+     exporters/gerber_placefile_writer.cpp
+     )
+ 
++if( KICAD_AMIGA )
++    # no OpenCASCADE yet: 3D model export reports that it is not available
++    list( FILTER PCBNEW_EXPORTERS EXCLUDE REGEX "exporters/(step|u3d)/" )
++    list( APPEND PCBNEW_EXPORTERS ${CMAKE_SOURCE_DIR}/amiga/exporter_step_none.cpp )
++endif()
++
+ set( PCBNEW_MICROWAVE_SRCS
+     microwave/microwave_footprint.cpp
+     microwave/microwave_inductor.cpp
+@@ -548,8 +554,13 @@ if( CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
+     endif()
+ endif()
+ 
++if( KICAD_AMIGA )
++    # no Python on AmigaOS yet: no SWIG wrapper, action plugins or wizards
++    set( PCBNEW_SCRIPTING_PYTHON_HELPERS "" )
++endif()
++
+ set( PCBNEW_SCRIPTING_SRCS
+-    pcbnew_wrap.cxx
++    $<$<NOT:$<BOOL:${KICAD_AMIGA}>>:pcbnew_wrap.cxx>
+     ${PCBNEW_SCRIPTING_PYTHON_HELPERS}
+     )
+ 
+@@ -615,7 +626,7 @@ add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/pcb
      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
      )
  
@@ -705,6 +708,34 @@ index 276772bb..93a636ed 100644
      list( APPEND PCBNEW_EXTRA_LIBS rt )
  endif()
  
+diff --git a/pcbnew/board_item.cpp b/pcbnew/board_item.cpp
+index 76830a09..223d99d1 100644
+--- a/pcbnew/board_item.cpp
++++ b/pcbnew/board_item.cpp
+@@ -23,7 +23,9 @@
+  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
+ 
++#ifndef KICAD_AMIGA
+ #include <pybind11/pybind11.h>
++#endif
+ 
+ #include <wx/debug.h>
+ #include <wx/msgdlg.h>
+diff --git a/pcbnew/pcbnew_settings.cpp b/pcbnew/pcbnew_settings.cpp
+index 1a812adb..fc410311 100644
+--- a/pcbnew/pcbnew_settings.cpp
++++ b/pcbnew/pcbnew_settings.cpp
+@@ -21,7 +21,9 @@
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ */
+ 
++#ifndef KICAD_AMIGA
+ #include <pybind11/pybind11.h>
++#endif
+ 
+ #include <common.h>
+ #include <settings/color_settings.h>
 diff --git a/plugins/CMakeLists.txt b/plugins/CMakeLists.txt
 index 9f8782aa..be4f994d 100644
 --- a/plugins/CMakeLists.txt
