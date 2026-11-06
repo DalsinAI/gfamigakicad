@@ -51,7 +51,9 @@ if [ ! -x "$HOST/bin/lemon" ] || [ "$SRC/thirdparty/lemon/lemon.c" -nt "$HOST/bi
 fi
 
 B="$WORK/kicad-build"
-if [ ! -f "$B/build.ninja" ] || [ "${RECONFIGURE:-0}" = 1 ]; then
+# configured again when the tree it was configured from moves
+if [ ! -f "$B/build.ninja" ] || [ "${RECONFIGURE:-0}" = 1 ] \
+   || [ "$(cat "$B/.gfamiga-here" 2>/dev/null || true)" != "$HERE" ]; then
     cmake -S "$SRC" -B "$B" -G Ninja \
         -DCMAKE_TOOLCHAIN_FILE="$HERE/cmake/m68k-amigaos.cmake" \
         -DCMAKE_BUILD_TYPE=Release \
@@ -72,5 +74,6 @@ if [ ! -f "$B/build.ninja" ] || [ "${RECONFIGURE:-0}" = 1 ]; then
         -DLIBGIT2_INCLUDE_DIR="$DEPS/include" -DLIBGIT2_LIBRARY="$DEPS/lib/libgit2.a;$DEPS/lib/libgfamiga_compat.a" \
         -DCMAKE_INSTALL_PREFIX="$WORK/kicad-install" \
         > "$WORK/kicad-configure.log" 2>&1 || { tail -40 "$WORK/kicad-configure.log"; exit 1; }
+    echo "$HERE" > "$B/.gfamiga-here"
 fi
 cmake --build "$B" -j"$JOBS" -- -k 0 "$@"
