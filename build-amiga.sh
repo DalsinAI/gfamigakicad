@@ -9,9 +9,21 @@
 set -eu
 HERE=$(cd "$(dirname "$0")" && pwd)
 . "$HERE/deps.lock"
-START=$(date +%s)
+START=${GFAMIGA_START:-$(date +%s)}
 STOVE=${STOVE:-"$HOME/AmiCradle/stoves/os32-gcc16-open6"}
 WORK=${WORK:-"$HOME/AmiCradle-dev/cradle-builds/lab-cache/gfamigakicad"}
+# A stove job checks the repo out afresh each run, so every file in it is
+# new and ninja would rebuild all of KiCad (the compile flags name the
+# prefix header in compat/). Build from a copy in WORK instead, where only
+# files whose contents changed get a new time.
+if [ "${GFAMIGA_TREE:-}" != 1 ]; then
+    T="$WORK/tree"; mkdir -p "$T"
+    (cd "$HERE" && find . -path ./.git -prune -o -type f -print) | while read -r f; do
+        d="$T/${f#./}"
+        cmp -s "$HERE/$f" "$d" 2>/dev/null || { mkdir -p "$(dirname "$d")"; cp "$HERE/$f" "$d"; }
+    done
+    GFAMIGA_TREE=1 GFAMIGA_START=$START WORK="$WORK" exec sh "$T/build-amiga.sh" "$@"
+fi
 OUT=${OUT:-"$WORK/out"}; JOBS=${JOBS:-12}
 LIMIT=${LIMIT:-840}   # seconds this run may take (the stove allows 900)
 # the upstream tarballs kept on the dev machine, used before downloading
@@ -80,6 +92,7 @@ TC="$TC" WORK="$WORK" WXSDK="$WXSDK" CURL="$WORK/curl" \
     timeout "$(( $(left) - 30 ))" sh "$HERE/scripts/build-kicad.sh" > "$WORK/kicad.log" 2>&1 || rc=$?
 grep -E '^FAILED|error:|undefined reference' "$WORK/kicad.log" | sort -u | head -60 || true
 tail -5 "$WORK/kicad.log"
+echo "kicad-amiga: ninja reached $(grep -o '^\[[0-9]*/[0-9]*\]' "$WORK/kicad.log" | tail -1)"
 [ "$rc" = 124 ] && again
 [ "$rc" = 0 ] || exit 1
 
