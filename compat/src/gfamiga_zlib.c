@@ -411,6 +411,14 @@ long inflateMark( z_streamp strm )
     return (long) Z_A0( -180, strm );
 }
 
+/* z.library always checks the check value; turning the check off is a
+ * request zlib may refuse too, so it is answered as done */
+int inflateValidate( z_streamp strm, int check )
+{
+    (void) check;
+    return strm ? Z_OK : Z_STREAM_ERROR;
+}
+
 int inflateGetHeader( z_streamp strm, gz_headerp head )
 {
     BASE_OR( Z_STREAM_ERROR )
