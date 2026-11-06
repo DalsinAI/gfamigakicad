@@ -22,15 +22,16 @@ static void z_mark( const char* what, z_streamp strm, long a, long b )
 {
     FILE* f;
 
-    if( ZMarks > 40 )
-        return;
-
     ZMarks++;
+
+    /* the first 60, then every 2000th, and every inflate that ends badly */
+    if( ZMarks > 60 && ( ZMarks % 2000 ) != 0 && !( what[7] == 'd' && a != 0 ) )
+        return;
 
     if( ( f = fopen( "T:kicad-steps.log", "a" ) ) )
     {
-        fprintf( f, "step zlib %s in=%lu out=%lu %ld %ld\n", what,
-                 strm ? (unsigned long) strm->avail_in : 0UL,
+        fprintf( f, "step zlib %s %d in=%lu out=%lu %ld %ld\n", what,
+                 ZMarks, strm ? (unsigned long) strm->avail_in : 0UL,
                  strm ? (unsigned long) strm->avail_out : 0UL, a, b );
         fclose( f );
     }

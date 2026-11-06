@@ -307,7 +307,7 @@ index 0144ac4f..e8569968 100644
      message( STATUS "Including 3Dconnexion SpaceMouse navigation support in pcbcommon" )
      add_subdirectory( ../pcbnew/navlib ./navlib)
 diff --git a/common/asset_archive.cpp b/common/asset_archive.cpp
-index cc2a7c8f..3471e6bc 100644
+index cc2a7c8f..88a00a54 100644
 --- a/common/asset_archive.cpp
 +++ b/common/asset_archive.cpp
 @@ -23,6 +23,14 @@
@@ -325,7 +325,7 @@ index cc2a7c8f..3471e6bc 100644
  
  ASSET_ARCHIVE::ASSET_ARCHIVE( const wxString& aFilePath, bool aLoadNow ) :
          m_filePath( aFilePath )
-@@ -38,19 +46,27 @@ bool ASSET_ARCHIVE::Load()
+@@ -38,22 +46,39 @@ bool ASSET_ARCHIVE::Load()
      if( !m_fileInfoCache.empty() )
          return false;
  
@@ -353,7 +353,19 @@ index cc2a7c8f..3471e6bc 100644
  
      while( ( entry = tarStream.GetNextEntry() ) != nullptr )
      {
-@@ -74,11 +90,21 @@ bool ASSET_ARCHIVE::Load()
++#ifdef KICAD_AMIGA
++        if( amigaCount < 3 )
++        {
++            char amigaBuf[200];
++            std::snprintf( amigaBuf, sizeof( amigaBuf ), "asset next %d %lu %s", amigaCount,
++                           (unsigned long) entry->GetSize(), (const char*) entry->GetName().utf8_str() );
++            AMIGA_MARK( amigaBuf );
++        }
++#endif
+         if( entry->IsDir() )
+         {
+             delete entry;
+@@ -74,11 +99,21 @@ bool ASSET_ARCHIVE::Load()
          m_fileInfoCache[entry->GetName()] = fi;
  
          offset += length;
