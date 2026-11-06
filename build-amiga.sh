@@ -104,6 +104,9 @@ for p in kicad/kicad kicad/kicad-cli eeschema/eeschema pcbnew/pcbnew gerbview/ge
          pagelayout_editor/pl_editor bitmap2component/bitmap2component pcb_calculator/pcb_calculator; do
     [ -f "$B/$p" ] && cp "$B/$p" "$OUT/"
 done
+# the zlib check (tests/ztest.c) against the same libz.a KiCad links
+"$TC/bin/m68k-amigaos-gcc" -O2 -m68040 -noixemul -I"$HERE/compat/include" -o "$OUT/ztest" \
+    "$HERE/tests/ztest.c" -L"$WORK/deps/lib" -lz || echo "kicad-amiga: ztest did not build"
 # what the programs read from PROGDIR:share/kicad: the toolbar and menu
 # images, the settings schemas and the new project template
 S="$OUT/share/kicad"; rm -rf "$S"; mkdir -p "$S/resources" "$S/schemas" "$S/template"
