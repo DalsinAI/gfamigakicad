@@ -706,13 +706,16 @@ index 5c1423fd..18dae543 100644
  
          case GAL_TYPE_CAIRO:
 diff --git a/common/eda_base_frame.cpp b/common/eda_base_frame.cpp
-index 91ea9ea9..8d98190f 100644
+index 91ea9ea9..94f29384 100644
 --- a/common/eda_base_frame.cpp
 +++ b/common/eda_base_frame.cpp
-@@ -90,9 +90,17 @@
+@@ -90,8 +90,17 @@
  
  #ifdef KICAD_IPC_API
  #include <api/api_server.h>
++
+ #endif
+ 
 +#ifdef KICAD_AMIGA
 +extern void KicadAmigaStep( const char* aWhere );
 +#define AMIGA_MARK( x ) KicadAmigaStep( x )
@@ -720,14 +723,11 @@ index 91ea9ea9..8d98190f 100644
 +#define AMIGA_MARK( x )
 +#endif
 +
- #endif
- 
- 
 +
+ 
  // Minimum window size
  static const wxSize minSizeLookup( FRAME_T aFrameType, wxWindow* aWindow )
- {
-@@ -142,34 +150,57 @@ BEGIN_EVENT_TABLE( EDA_BASE_FRAME, wxFrame )
+@@ -142,34 +151,57 @@ BEGIN_EVENT_TABLE( EDA_BASE_FRAME, wxFrame )
  
  void EDA_BASE_FRAME::commonInit( FRAME_T aFrameType )
  {
@@ -785,7 +785,7 @@ index 91ea9ea9..8d98190f 100644
  
      Connect( ID_AUTO_SAVE_TIMER, wxEVT_TIMER,
               wxTimerEventHandler( EDA_BASE_FRAME::onAutoSaveTimer ) );
-@@ -177,8 +208,10 @@ void EDA_BASE_FRAME::commonInit( FRAME_T aFrameType )
+@@ -177,8 +209,10 @@ void EDA_BASE_FRAME::commonInit( FRAME_T aFrameType )
      // hook wxEVT_CLOSE_WINDOW so we can call SaveSettings().  This function seems
      // to be called before any other hook for wxCloseEvent, which is necessary.
      Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( EDA_BASE_FRAME::windowClosing ) );
@@ -796,7 +796,7 @@ index 91ea9ea9..8d98190f 100644
  }
  
  
-@@ -191,13 +224,20 @@ EDA_BASE_FRAME::EDA_BASE_FRAME( wxWindow* aParent, FRAME_T aFrameType, const wxS
+@@ -191,13 +225,20 @@ EDA_BASE_FRAME::EDA_BASE_FRAME( wxWindow* aParent, FRAME_T aFrameType, const wxS
          KIWAY_HOLDER( aKiway, KIWAY_HOLDER::FRAME ),
          UNITS_PROVIDER( aIuScale, EDA_UNITS::MM )
  {
@@ -817,7 +817,7 @@ index 91ea9ea9..8d98190f 100644
  
      Bind( wxEVT_DPI_CHANGED,
            [&]( wxDPIChangedEvent& aEvent )
-@@ -1049,18 +1089,25 @@ void EDA_BASE_FRAME::LoadWindowState( const wxString& aFileName )
+@@ -1049,18 +1090,25 @@ void EDA_BASE_FRAME::LoadWindowState( const wxString& aFileName )
  
  void EDA_BASE_FRAME::LoadWindowState( const WINDOW_STATE& aState )
  {
@@ -843,7 +843,7 @@ index 91ea9ea9..8d98190f 100644
  
      if( m_frameSize.x < minSize.x || m_frameSize.y < minSize.y )
      {
-@@ -1072,6 +1119,7 @@ void EDA_BASE_FRAME::LoadWindowState( const WINDOW_STATE& aState )
+@@ -1072,6 +1120,7 @@ void EDA_BASE_FRAME::LoadWindowState( const WINDOW_STATE& aState )
      }
  
      wxLogTrace( traceDisplayLocation, wxS( "Number of displays: %d" ), wxDisplay::GetCount() );
@@ -851,7 +851,7 @@ index 91ea9ea9..8d98190f 100644
  
      if( aState.display >= wxDisplay::GetCount() )
      {
-@@ -1137,6 +1185,7 @@ void EDA_BASE_FRAME::LoadWindowState( const WINDOW_STATE& aState )
+@@ -1137,6 +1186,7 @@ void EDA_BASE_FRAME::LoadWindowState( const WINDOW_STATE& aState )
                  m_framePos.x, m_framePos.y, m_frameSize.x, m_frameSize.y );
  
      SetSize( m_framePos.x, m_framePos.y, m_frameSize.x, m_frameSize.y );
@@ -859,7 +859,7 @@ index 91ea9ea9..8d98190f 100644
  
      // Center the window if we reset to default
      if( m_framePos.x == -1 )
-@@ -1148,7 +1197,9 @@ void EDA_BASE_FRAME::LoadWindowState( const WINDOW_STATE& aState )
+@@ -1148,7 +1198,9 @@ void EDA_BASE_FRAME::LoadWindowState( const WINDOW_STATE& aState )
  
      // Record the frame sizes in an un-maximized state
      m_normalFrameSize = m_frameSize;
@@ -869,7 +869,7 @@ index 91ea9ea9..8d98190f 100644
  
      // Maximize if we were maximized before
      if( aState.maximized || ( wasDefault && m_maximizeByDefault ) )
-@@ -1158,6 +1209,7 @@ void EDA_BASE_FRAME::LoadWindowState( const WINDOW_STATE& aState )
+@@ -1158,6 +1210,7 @@ void EDA_BASE_FRAME::LoadWindowState( const WINDOW_STATE& aState )
      }
  
      m_displayIndex = wxDisplay::GetFromWindow( this );
@@ -877,7 +877,7 @@ index 91ea9ea9..8d98190f 100644
  }
  
  
-@@ -1216,13 +1268,19 @@ void EDA_BASE_FRAME::ensureWindowIsOnScreen()
+@@ -1216,13 +1269,19 @@ void EDA_BASE_FRAME::ensureWindowIsOnScreen()
  
  void EDA_BASE_FRAME::LoadWindowSettings( const WINDOW_SETTINGS* aCfg )
  {
@@ -897,7 +897,7 @@ index 91ea9ea9..8d98190f 100644
  }
  
  
-@@ -1281,15 +1339,19 @@ void EDA_BASE_FRAME::SaveWindowSettings( WINDOW_SETTINGS* aCfg )
+@@ -1281,15 +1340,19 @@ void EDA_BASE_FRAME::SaveWindowSettings( WINDOW_SETTINGS* aCfg )
  
  void EDA_BASE_FRAME::LoadSettings( APP_SETTINGS_BASE* aCfg )
  {
@@ -917,7 +917,7 @@ index 91ea9ea9..8d98190f 100644
  }
  
  
-@@ -1330,6 +1392,7 @@ WINDOW_SETTINGS* EDA_BASE_FRAME::GetWindowSettings( APP_SETTINGS_BASE* aCfg )
+@@ -1330,6 +1393,7 @@ WINDOW_SETTINGS* EDA_BASE_FRAME::GetWindowSettings( APP_SETTINGS_BASE* aCfg )
  
  APP_SETTINGS_BASE* EDA_BASE_FRAME::config() const
  {
