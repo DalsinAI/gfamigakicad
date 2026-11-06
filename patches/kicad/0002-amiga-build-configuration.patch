@@ -307,15 +307,18 @@ index 0144ac4f..e8569968 100644
      message( STATUS "Including 3Dconnexion SpaceMouse navigation support in pcbcommon" )
      add_subdirectory( ../pcbnew/navlib ./navlib)
 diff --git a/common/asset_archive.cpp b/common/asset_archive.cpp
-index cc2a7c8f..ce039fb7 100644
+index cc2a7c8f..2d9d3229 100644
 --- a/common/asset_archive.cpp
 +++ b/common/asset_archive.cpp
-@@ -20,9 +20,19 @@
+@@ -20,9 +20,22 @@
  #include <wx/tarstrm.h>
  #include <wx/wfstream.h>
  #include <wx/zstream.h>
 +#include <wx/datetime.h>
 +#include <wx/crt.h>
++#include <pwd.h>
++#include <grp.h>
++#include <unistd.h>
  
  #include <asset_archive.h>
  
@@ -330,7 +333,7 @@ index cc2a7c8f..ce039fb7 100644
  
  ASSET_ARCHIVE::ASSET_ARCHIVE( const wxString& aFilePath, bool aLoadNow ) :
          m_filePath( aFilePath )
-@@ -38,22 +48,81 @@ bool ASSET_ARCHIVE::Load()
+@@ -38,22 +51,101 @@ bool ASSET_ARCHIVE::Load()
      if( !m_fileInfoCache.empty() )
          return false;
  
@@ -383,6 +386,26 @@ index cc2a7c8f..ce039fb7 100644
 +        AMIGA_MARK( "probe datetime" );
 +        double d = wxAtof( wxT( "1700000000.5" ) );
 +        AMIGA_MARK( d > 1 ? "probe atof" : "probe atof zero" );
++        wxDateTime probeNow = wxDateTime::Now();
++        AMIGA_MARK( probeNow.IsValid() ? "probe now" : "probe now invalid" );
++        int probeUid = (int) getuid();
++        int probeGid = (int) getgid();
++        std::snprintf( amigaBuf, sizeof( amigaBuf ), "probe uid %d gid %d", probeUid, probeGid );
++        AMIGA_MARK( amigaBuf );
++        {
++            AMIGA_MARK( "probe getpwuid" );
++            struct passwd* ppw = getpwuid( probeUid );
++            std::snprintf( amigaBuf, sizeof( amigaBuf ), "probe getpwuid %s",
++                           ( ppw && ppw->pw_name ) ? ppw->pw_name : "-" );
++            AMIGA_MARK( amigaBuf );
++        }
++        {
++            AMIGA_MARK( "probe getgrgid" );
++            struct group* pgr = getgrgid( probeGid );
++            std::snprintf( amigaBuf, sizeof( amigaBuf ), "probe getgrgid %s",
++                           ( pgr && pgr->gr_name ) ? pgr->gr_name : "-" );
++            AMIGA_MARK( amigaBuf );
++        }
 +        wxTarEntry probeEntry;
 +        AMIGA_MARK( "probe entry made" );
 +        probeEntry.SetDateTime( when );
@@ -412,7 +435,7 @@ index cc2a7c8f..ce039fb7 100644
          if( entry->IsDir() )
          {
              delete entry;
-@@ -74,11 +143,21 @@ bool ASSET_ARCHIVE::Load()
+@@ -74,11 +166,21 @@ bool ASSET_ARCHIVE::Load()
          m_fileInfoCache[entry->GetName()] = fi;
  
          offset += length;
