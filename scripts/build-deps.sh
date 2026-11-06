@@ -68,6 +68,10 @@ patch_tree() { # name dir: apply patches/<name>/*.patch once
 done_for() { [ "$(cat "$DEPS/.$1" 2>/dev/null || true)" = "$2" ]; }
 mark() { echo "$2" > "$DEPS/.$1"; }
 
+# ---- the Open SDK: our libraries' headers (proto/gfopenfont.h...) and OpenNDK
+SDK=$(gitfetch opensdk "$OPENSDK_REPO" "$OPENSDK_COMMIT")
+log "Open SDK: $SDK"
+
 # ---- OpenNDK: the AmigaOS and socket headers. A stove has them as the
 # compiler's ndk-include; the GFOpenAmigaGCC release alone does not.
 NDK=${NDK:-}
@@ -75,7 +79,7 @@ if [ -z "$NDK" ]; then
     if [ -d "$TC/m68k-amigaos/ndk-include/sys" ] && [ -f "$TC/m68k-amigaos/ndk-include/sys/socket.h" ]; then
         NDK="$TC/m68k-amigaos/ndk-include"
     else
-        NDK="$(gitfetch opensdk "$OPENSDK_REPO" "$OPENSDK_COMMIT")/OpenNDK/Include_H"
+        NDK="$SDK/OpenNDK/Include_H"
     fi
 fi
 export KC_NDK="$NDK"

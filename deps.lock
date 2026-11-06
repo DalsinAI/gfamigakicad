@@ -17,11 +17,11 @@ NGSPICE_URL=https://downloads.sourceforge.net/project/ngspice/ng-spice-rework/47
 NGSPICE_SHA256=894e649651f1838a14095e5a5439e7d3aa63e87ede14d283173fda4fcdef675f
 # OpenNDK (our clean-room NDK, with the socket headers), from the Open SDK
 OPENSDK_REPO=https://github.com/DalsinAI/gfopensdk
-OPENSDK_COMMIT=007965a7905803c73f1caeae199badbd8f4c1b95
+OPENSDK_COMMIT=60797bf2d7d7fb63c0e8169fb5a08cdcc35f180c
 
 # GFOpenWX Toolkit the SDK (WXSDK) is built from: PR #4 branch with STC
 TOOLKIT_REPO=https://github.com/DalsinAI/gfopenwxtoolkit
-TOOLKIT_COMMIT=3f09891ea3c1e1c78c68198b51226afdae703d84
+TOOLKIT_COMMIT=7fb2de8eb56eac123103f5cbff0cd787ab937268
 
 # Platform libraries (scripts/build-platform-libs.sh): the Team's ports, built soft float
 GFOPENFREETYPE_COMMIT=48ca7655dbc5a3ffbbdb26dae81f21eae506a3d8
