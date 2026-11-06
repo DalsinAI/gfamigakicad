@@ -33,8 +33,11 @@ if [ "$(cat "$WX/.commit" 2>/dev/null || true)" != "$TOOLKIT_COMMIT" ]; then
         git -C "$S" fetch -q --depth 1 "$TOOLKIT_REPO" "$TOOLKIT_COMMIT"; git -C "$S" checkout -q FETCH_HEAD
     fi
     mkdir -p "$WX"
-    STOVE="$STOVE" WORK="$WX" OUT="$WX/out" JOBS=$JOBS sh "$S/build-amiga.sh" > "$WORK/toolkit.log" 2>&1 \
-        || { tail -30 "$WORK/toolkit.log"; exit 1; }
+    rc=0
+    STOVE="$STOVE" WORK="$WX" OUT="$WX/out" JOBS=$JOBS timeout "$(left)" sh "$S/build-amiga.sh" \
+        > "$WORK/toolkit.log" 2>&1 || rc=$?
+    [ "$rc" = 124 ] && again
+    [ "$rc" = 0 ] || { tail -30 "$WORK/toolkit.log"; exit 1; }
     echo "$TOOLKIT_COMMIT" > "$WX/.commit"
 fi
 WXSDK="$WX/out/sdk"; WXSRC=$(ls -d "$WX"/wxWidgets-* | head -1)
@@ -42,15 +45,19 @@ WXSDK="$WX/out/sdk"; WXSRC=$(ls -d "$WX"/wxWidgets-* | head -1)
 
 # ---- Boost.Locale, protobuf, libgit2, zstd, GLM and the host tools
 step "dependencies"
-TC="$TC" WORK="$WORK" sh "$HERE/scripts/build-deps.sh" > "$WORK/deps.log" 2>&1 || { tail -30 "$WORK/deps.log"; exit 1; }
+rc=0; TC="$TC" WORK="$WORK" timeout "$(left)" sh "$HERE/scripts/build-deps.sh" > "$WORK/deps.log" 2>&1 || rc=$?
+[ "$rc" = 124 ] && again
+[ "$rc" = 0 ] || { tail -30 "$WORK/deps.log"; exit 1; }
 [ "$(left)" -gt 120 ] || again
 
 # ---- the platform libraries, soft float, from the Team's ports
 step "platform libraries"
 NDK=
 [ -d "$TC/m68k-amigaos/ndk-include" ] || NDK="$WORK/src/opensdk/OpenNDK/Include_H"
-TC="$TC" WORK="$WORK" WXSDK="$WXSDK" WXSRC="$WXSRC" NDK="$NDK" sh "$HERE/scripts/build-platform-libs.sh" \
-    > "$WORK/platform.log" 2>&1 || { tail -30 "$WORK/platform.log"; exit 1; }
+rc=0; TC="$TC" WORK="$WORK" WXSDK="$WXSDK" WXSRC="$WXSRC" NDK="$NDK" timeout "$(left)" \
+    sh "$HERE/scripts/build-platform-libs.sh" > "$WORK/platform.log" 2>&1 || rc=$?
+[ "$rc" = 124 ] && again
+[ "$rc" = 0 ] || { tail -30 "$WORK/platform.log"; exit 1; }
 [ "$(left)" -gt 120 ] || again
 
 # ---- KiCad, for what time is left
