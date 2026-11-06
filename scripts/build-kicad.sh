@@ -25,14 +25,23 @@ PSUM=$(find "$HERE/patches/kicad" "$HERE/kicad" -type f | sort | xargs cat | sha
 SRC="$WORK/kicad-src"
 if [ "$(cat "$SRC/.gfamiga-patches" 2>/dev/null || true)" != "$PSUM" ]; then
     echo "kicad: unpacking and patching ($PSUM)"
-    rm -rf "$SRC"; mkdir -p "$SRC"
-    tar xzf "$f" -C "$SRC" --strip-components=1 \
+    NEW="$WORK/kicad-src.new"
+    rm -rf "$NEW"; mkdir -p "$NEW"
+    tar xzf "$f" -C "$NEW" --strip-components=1 \
         --exclude='*/qa/data' --exclude='*/demos'
     for p in "$HERE"/patches/kicad/*.patch; do
-        patch -d "$SRC" -p1 -s --forward < "$p" || { echo "kicad: $p does not apply" >&2; exit 1; }
+        patch -d "$NEW" -p1 -s --forward < "$p" || { echo "kicad: $p does not apply" >&2; exit 1; }
     done
     # our own files KiCad builds with (stubs for parts not ported yet)
-    cp -r "$HERE/kicad/." "$SRC/amiga/"
+    cp -r "$HERE/kicad/." "$NEW/amiga/"
+    if [ -d "$SRC" ] && command -v rsync >/dev/null 2>&1; then
+        # only files whose contents changed get a new time, so ninja rebuilds
+        # just what the new patches touch
+        rsync -rc --delete --exclude=.gfamiga-patches "$NEW/" "$SRC/"
+        rm -rf "$NEW"
+    else
+        rm -rf "$SRC"; mv "$NEW" "$SRC"
+    fi
     echo "$PSUM" > "$SRC/.gfamiga-patches"
 fi
 
