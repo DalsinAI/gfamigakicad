@@ -543,10 +543,10 @@ index 91ea9ea9..e46c94f0 100644
      Bind( wxEVT_DPI_CHANGED,
            [&]( wxDPIChangedEvent& aEvent )
 diff --git a/common/eda_draw_frame.cpp b/common/eda_draw_frame.cpp
-index b2e5f4b7..13be8bd3 100644
+index b2e5f4b7..01272ab8 100644
 --- a/common/eda_draw_frame.cpp
 +++ b/common/eda_draw_frame.cpp
-@@ -83,6 +83,13 @@
+@@ -83,6 +83,14 @@
  #include <wx/snglinst.h>
  #include <wx/fdrepdlg.h>
  #include <tool/editor_conditions.h>
@@ -557,10 +557,11 @@ index b2e5f4b7..13be8bd3 100644
 +#define AMIGA_MARK( x )
 +#endif
 +
++
  
  #define FR_HISTORY_LIST_CNT     10   ///< Maximum size of the find/replace history stacks.
  
-@@ -105,32 +112,52 @@ EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrame
+@@ -105,53 +113,84 @@ EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrame
          m_socketServer( nullptr ),
          m_lastToolbarIconSize( 0 )
  {
@@ -613,7 +614,16 @@ index b2e5f4b7..13be8bd3 100644
  
      if( ( aStyle & wxFRAME_NO_TASKBAR ) == 0 )
      {
-@@ -143,15 +170,22 @@ EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrame
++        AMIGA_MARK( "draw sb create" );
+         CreateStatusBar( 8 )->SetDoubleBuffered( true );
++        AMIGA_MARK( "draw sb created" );
+ 
+         GetStatusBar()->SetFont( KIUI::GetStatusFont( this ) );
++        AMIGA_MARK( "draw sb font" );
+ 
+         // set the size of the status bar subwindows:
+         updateStatusBarWidths();
++        AMIGA_MARK( "draw sb widths" );
      }
  
      m_messagePanel = new EDA_MSG_PANEL( this, -1, wxPoint( 0, m_frameSize.y ), wxDefaultSize );
@@ -636,6 +646,45 @@ index b2e5f4b7..13be8bd3 100644
  
      Bind( wxEVT_DPI_CHANGED,
            [&]( wxDPIChangedEvent& aEvent )
+@@ -797,13 +836,18 @@ void EDA_DRAW_FRAME::OnSize( wxSizeEvent& SizeEv )
+ 
+ void EDA_DRAW_FRAME::updateStatusBarWidths()
+ {
++    AMIGA_MARK( "drawsb 837" );
+     constexpr int numLocalFields = 8;
++    AMIGA_MARK( "drawsb 838" );
+ 
+     wxStatusBar* stsbar = GetStatusBar();
++    AMIGA_MARK( "drawsb 840" );
+     int spacer = KIUI::GetTextSize( wxT( "M" ), stsbar ).x;
++    AMIGA_MARK( "drawsb 841" );
+ 
+     // Note this is a KISTATUSBAR and there are fields to the right of the ones we know about
+     int totalFields = stsbar->GetFieldsCount();
++    AMIGA_MARK( "drawsb 844" );
+ 
+     std::vector<int> dims = {
+         // remainder of status bar on far left is set to a default or whatever is left over.
+@@ -833,16 +877,19 @@ void EDA_DRAW_FRAME::updateStatusBarWidths()
+         // constraint mode
+         KIUI::GetTextSize(  _( "Constrain to H, V, 45" ), stsbar).x + spacer
+     };
++    AMIGA_MARK( "drawsb 873" );
+ 
+     for( int idx = numLocalFields; idx < totalFields; ++idx )
+         dims.emplace_back( stsbar->GetStatusWidth( idx ) );
+ 
+     SetStatusWidths( dims.size(), dims.data() );
++    AMIGA_MARK( "drawsb 878" );
+ }
+ 
+ 
+ wxStatusBar* EDA_DRAW_FRAME::OnCreateStatusBar( int number, long style, wxWindowID id, const wxString& name )
+ {
++    AMIGA_MARK( "drawsb 883" );
+     return new KISTATUSBAR( number, this, id, KISTATUSBAR::STYLE_FLAGS::WARNING_ICON );
+ }
+ 
 diff --git a/common/gal/CMakeLists.txt b/common/gal/CMakeLists.txt
 index 19537f46..1bc1b2c3 100644
 --- a/common/gal/CMakeLists.txt
@@ -1524,6 +1573,83 @@ index 9478e2db..fe1c4116 100644
  wxRect
  wxGetContentRect(wxSize contentSize,
                   const wxRect& cellRect,
+diff --git a/common/widgets/kistatusbar.cpp b/common/widgets/kistatusbar.cpp
+index 0269f006..76e36035 100644
+--- a/common/widgets/kistatusbar.cpp
++++ b/common/widgets/kistatusbar.cpp
+@@ -42,6 +42,13 @@
+ #include <dialog_HTML_reporter_base.h>
+ #include <trace_helpers.h>
+ #include <wx/dcclient.h>
++#ifdef KICAD_AMIGA
++extern void KicadAmigaStep( const char* aWhere );
++#define AMIGA_MARK( x ) KicadAmigaStep( x )
++#else
++#define AMIGA_MARK( x )
++#endif
++
+ 
+ 
+ class STATUSBAR_WARNING_REPORTER_DIALOG : public DIALOG_HTML_REPORTER
+@@ -83,18 +90,24 @@ KISTATUSBAR::KISTATUSBAR( int aNumberFields, wxWindow* parent, wxWindowID id, ST
+         m_normalFieldsCount( aNumberFields ),
+         m_styleFlags( aFlags )
+ {
++    AMIGA_MARK( "sbar 85" );
+ #ifdef __WXOSX__
+     // we need +1 extra field on OSX to offset from the rounded corner on the right
+     // OSX doesn't use resize grippers like the other platforms and the statusbar field
+     // includes the rounded part
+     int extraFields = 3;
++    AMIGA_MARK( "sbar 90" );
+ #else
+     int extraFields = 2;
++    AMIGA_MARK( "sbar 92" );
+ #endif
+ 
+     bool showNotification = ( m_styleFlags & NOTIFICATION_ICON );
++    AMIGA_MARK( "sbar 95" );
+     bool showCancel = ( m_styleFlags & CANCEL_BUTTON );
++    AMIGA_MARK( "sbar 96" );
+     bool showWarning = ( m_styleFlags & WARNING_ICON );
++    AMIGA_MARK( "sbar 97" );
+ 
+     if( showCancel )
+         extraFields++;
+@@ -145,23 +158,33 @@ KISTATUSBAR::KISTATUSBAR( int aNumberFields, wxWindow* parent, wxWindowID id, ST
+     }
+ 
+     m_fieldWidths.assign( aNumberFields + extraFields, -1 );
++    AMIGA_MARK( "sbar 147" );
+ 
+ #ifdef __WXOSX__
+     // offset from the right edge
+     int padding = KIUI::GetTextSize( wxT( "M" ), this ).x;
++    AMIGA_MARK( "sbar 151" );
+     m_fieldWidths[aNumberFields + extraFields - 1] = padding;
++    AMIGA_MARK( "sbar 152" );
+ #endif
+ 
+     SetFieldsCount( m_fieldWidths.size(), m_fieldWidths.data() );
++    AMIGA_MARK( "sbar 155" );
+ 
+     std::vector<int> styles( aNumberFields + extraFields, wxSB_FLAT );
++    AMIGA_MARK( "sbar 157" );
+     SetStatusStyles( styles.size(), styles.data() );
++    AMIGA_MARK( "sbar 158" );
+ 
+     Bind( wxEVT_SIZE, &KISTATUSBAR::onSize, this );
++    AMIGA_MARK( "sbar 160" );
+     m_backgroundProgressBar->Bind( wxEVT_LEFT_DOWN, &KISTATUSBAR::onBackgroundProgressClick, this );
++    AMIGA_MARK( "sbar 161" );
+ 
+     HideBackgroundProgressBar();
++    AMIGA_MARK( "sbar 163" );
+     Layout();
++    AMIGA_MARK( "sbar 164" );
+ }
+ 
+ 
 diff --git a/common/widgets/wx_aui_art_providers.cpp b/common/widgets/wx_aui_art_providers.cpp
 index c23c3b13..88d46f45 100644
 --- a/common/widgets/wx_aui_art_providers.cpp
