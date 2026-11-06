@@ -21,4 +21,4 @@ OPENSDK_COMMIT=007965a7905803c73f1caeae199badbd8f4c1b95
 
 # GFOpenWX Toolkit the SDK (WXSDK) is built from: PR #4 branch with STC
 TOOLKIT_REPO=https://github.com/DalsinAI/gfopenwxtoolkit
-TOOLKIT_COMMIT=39dea4522d46eafb1bdd24eed68e17a96aa59a81
+TOOLKIT_COMMIT=c2382bfd72efb0c08c71cc6588a313acdec4e0ee
