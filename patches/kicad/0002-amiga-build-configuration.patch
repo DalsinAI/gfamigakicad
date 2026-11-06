@@ -926,14 +926,15 @@ index 91ea9ea9..94f29384 100644
      return Kiface().KifaceSettings();
  }
 diff --git a/common/eda_draw_frame.cpp b/common/eda_draw_frame.cpp
-index b2e5f4b7..caeda298 100644
+index b2e5f4b7..5fc591ed 100644
 --- a/common/eda_draw_frame.cpp
 +++ b/common/eda_draw_frame.cpp
-@@ -83,6 +83,15 @@
+@@ -83,6 +83,16 @@
  #include <wx/snglinst.h>
  #include <wx/fdrepdlg.h>
  #include <tool/editor_conditions.h>
 +#ifdef KICAD_AMIGA
++#include <cstdio>
 +extern void KicadAmigaStep( const char* aWhere );
 +#define AMIGA_MARK( x ) KicadAmigaStep( x )
 +#else
@@ -945,7 +946,7 @@ index b2e5f4b7..caeda298 100644
  
  #define FR_HISTORY_LIST_CNT     10   ///< Maximum size of the find/replace history stacks.
  
-@@ -105,53 +114,84 @@ EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrame
+@@ -105,53 +115,84 @@ EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrame
          m_socketServer( nullptr ),
          m_lastToolbarIconSize( 0 )
  {
@@ -1030,7 +1031,7 @@ index b2e5f4b7..caeda298 100644
  
      Bind( wxEVT_DPI_CHANGED,
            [&]( wxDPIChangedEvent& aEvent )
-@@ -797,13 +837,18 @@ void EDA_DRAW_FRAME::OnSize( wxSizeEvent& SizeEv )
+@@ -797,13 +838,18 @@ void EDA_DRAW_FRAME::OnSize( wxSizeEvent& SizeEv )
  
  void EDA_DRAW_FRAME::updateStatusBarWidths()
  {
@@ -1049,7 +1050,7 @@ index b2e5f4b7..caeda298 100644
  
      std::vector<int> dims = {
          // remainder of status bar on far left is set to a default or whatever is left over.
-@@ -833,16 +878,19 @@ void EDA_DRAW_FRAME::updateStatusBarWidths()
+@@ -833,16 +879,19 @@ void EDA_DRAW_FRAME::updateStatusBarWidths()
          // constraint mode
          KIUI::GetTextSize(  _( "Constrain to H, V, 45" ), stsbar).x + spacer
      };
@@ -1069,7 +1070,7 @@ index b2e5f4b7..caeda298 100644
      return new KISTATUSBAR( number, this, id, KISTATUSBAR::STYLE_FLAGS::WARNING_ICON );
  }
  
-@@ -873,23 +921,35 @@ const wxString EDA_DRAW_FRAME::GetZoomLevelIndicator() const
+@@ -873,23 +922,55 @@ const wxString EDA_DRAW_FRAME::GetZoomLevelIndicator() const
  
  void EDA_DRAW_FRAME::LoadSettings( APP_SETTINGS_BASE* aCfg )
  {
@@ -1091,6 +1092,26 @@ index b2e5f4b7..caeda298 100644
  
      m_galDisplayOptions.ReadConfig( *cmnCfg, *window, this );
 +    AMIGA_MARK( "drawls 933" );
++#ifdef KICAD_AMIGA
++    {
++        char amigaBuf[200];
++        const wxString& fs = aCfg->m_FindReplace.find_string;
++        std::snprintf( amigaBuf, sizeof( amigaBuf ), "drawls find %p data %p cfg %p len %lu sz %lu",
++                       (const void*) &fs, (const void*) m_findReplaceData.get(), (const void*) aCfg,
++                       (unsigned long) fs.length(), (unsigned long) sizeof( *aCfg ) );
++        AMIGA_MARK( amigaBuf );
++        wxString copy = fs;
++        AMIGA_MARK( "drawls find copied" );
++        {
++            char amigaOff[160];
++            std::snprintf( amigaOff, sizeof( amigaOff ), "drawls layout size %lu find %lu sys %lu",
++                           (unsigned long) sizeof( APP_SETTINGS_BASE ),
++                           (unsigned long) ( (const char*) &aCfg->m_FindReplace - (const char*) aCfg ),
++                           (unsigned long) ( (const char*) &aCfg->m_System - (const char*) aCfg ) );
++            AMIGA_MARK( amigaOff );
++        }
++    }
++#endif
  
      m_findReplaceData->findString = aCfg->m_FindReplace.find_string;
 +    AMIGA_MARK( "drawls 935" );
@@ -1105,7 +1126,7 @@ index b2e5f4b7..caeda298 100644
  
      for( const wxString& s : aCfg->m_FindReplace.find_history )
          m_findStringHistoryList.Add( s );
-@@ -898,6 +958,7 @@ void EDA_DRAW_FRAME::LoadSettings( APP_SETTINGS_BASE* aCfg )
+@@ -898,6 +979,7 @@ void EDA_DRAW_FRAME::LoadSettings( APP_SETTINGS_BASE* aCfg )
          m_replaceStringHistoryList.Add( s );
  
      m_lastToolbarIconSize = cmnCfg->m_Appearance.toolbar_icon_size;
@@ -2549,14 +2570,15 @@ index f287e536..04624b50 100644
      ${PL_EDITOR_SRCS}
      ${DIALOGS_SRCS}
 diff --git a/pagelayout_editor/pl_editor_frame.cpp b/pagelayout_editor/pl_editor_frame.cpp
-index 351eec1c..f8063536 100644
+index 351eec1c..ce5d5f39 100644
 --- a/pagelayout_editor/pl_editor_frame.cpp
 +++ b/pagelayout_editor/pl_editor_frame.cpp
-@@ -71,6 +71,14 @@
+@@ -71,6 +71,15 @@
  #include <spacenav/spnav_2d_plugin.h>
  #else
  #include <navlib/nl_pl_editor_plugin.h>
 +#ifdef KICAD_AMIGA
++#include <cstdio>
 +extern void KicadAmigaStep( const char* aWhere );
 +#define AMIGA_MARK( x ) KicadAmigaStep( x )
 +#else
@@ -2567,7 +2589,7 @@ index 351eec1c..f8063536 100644
  #endif
  
  
-@@ -99,54 +107,86 @@ PL_EDITOR_FRAME::PL_EDITOR_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
+@@ -99,54 +108,86 @@ PL_EDITOR_FRAME::PL_EDITOR_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
          m_originSelectBox( nullptr ), m_originSelectChoice( 0 ), m_pageSelectBox( nullptr ),
          m_mruImagePath( wxEmptyString )
  {
@@ -2654,7 +2676,7 @@ index 351eec1c..f8063536 100644
  
      int dims[] = {
  
-@@ -177,14 +217,18 @@ PL_EDITOR_FRAME::PL_EDITOR_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
+@@ -177,14 +218,18 @@ PL_EDITOR_FRAME::PL_EDITOR_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
          // constraint mode
          KIUI::GetTextSize( _( "Constrain to H, V, 45" ), stsbar ).x + spacer
      };
@@ -2673,7 +2695,7 @@ index 351eec1c..f8063536 100644
  
      // Rows; layers 4 - 6
      m_auimgr.AddPane( m_tbTopMain, EDA_PANE().HToolbar().Name( "TopMainToolbar" )
-@@ -209,27 +253,38 @@ PL_EDITOR_FRAME::PL_EDITOR_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
+@@ -209,27 +254,38 @@ PL_EDITOR_FRAME::PL_EDITOR_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
                        .Center() );
  
      FinishAUIInitialization();
@@ -2712,10 +2734,20 @@ index 351eec1c..f8063536 100644
  
      // Register a call to update the toolbar sizes. It can't be done immediately because
      // it seems to require some sizes calculated that aren't yet (at least on GTK).
-@@ -531,22 +586,34 @@ const BOX2I PL_EDITOR_FRAME::GetDocumentExtents( bool aIncludeAllVisible ) const
+@@ -531,22 +587,44 @@ const BOX2I PL_EDITOR_FRAME::GetDocumentExtents( bool aIncludeAllVisible ) const
  
  void PL_EDITOR_FRAME::LoadSettings( APP_SETTINGS_BASE* aCfg )
  {
++#ifdef KICAD_AMIGA
++    {
++        char amigaOff[160];
++        std::snprintf( amigaOff, sizeof( amigaOff ), "plls layout size %lu find %lu sys %lu",
++               (unsigned long) sizeof( APP_SETTINGS_BASE ),
++               (unsigned long) ( (const char*) &aCfg->m_FindReplace - (const char*) aCfg ),
++               (unsigned long) ( (const char*) &aCfg->m_System - (const char*) aCfg ) );
++        AMIGA_MARK( amigaOff );
++    }
++#endif
 +    AMIGA_MARK( "plls 587" );
      EDA_DRAW_FRAME::LoadSettings( aCfg );
 +    AMIGA_MARK( "plls 588" );
