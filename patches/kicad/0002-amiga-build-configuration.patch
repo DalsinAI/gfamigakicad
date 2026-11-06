@@ -307,18 +307,10 @@ index 0144ac4f..e8569968 100644
      message( STATUS "Including 3Dconnexion SpaceMouse navigation support in pcbcommon" )
      add_subdirectory( ../pcbnew/navlib ./navlib)
 diff --git a/common/asset_archive.cpp b/common/asset_archive.cpp
-index cc2a7c8f..2d9d3229 100644
+index cc2a7c8f..88a00a54 100644
 --- a/common/asset_archive.cpp
 +++ b/common/asset_archive.cpp
-@@ -20,9 +20,22 @@
- #include <wx/tarstrm.h>
- #include <wx/wfstream.h>
- #include <wx/zstream.h>
-+#include <wx/datetime.h>
-+#include <wx/crt.h>
-+#include <pwd.h>
-+#include <grp.h>
-+#include <unistd.h>
+@@ -23,6 +23,14 @@
  
  #include <asset_archive.h>
  
@@ -333,7 +325,7 @@ index cc2a7c8f..2d9d3229 100644
  
  ASSET_ARCHIVE::ASSET_ARCHIVE( const wxString& aFilePath, bool aLoadNow ) :
          m_filePath( aFilePath )
-@@ -38,22 +51,101 @@ bool ASSET_ARCHIVE::Load()
+@@ -38,22 +46,39 @@ bool ASSET_ARCHIVE::Load()
      if( !m_fileInfoCache.empty() )
          return false;
  
@@ -356,68 +348,6 @@ index cc2a7c8f..2d9d3229 100644
      size_t offset = 0;
 +    AMIGA_MARK( "asset cache sized" );
 +#ifdef KICAD_AMIGA
-+    {
-+        // TEMP probe: the first tar header, by hand, then each wx step the tar reader takes
-+        char amigaBuf[200];
-+        wxFFileInputStream probeFile( m_filePath );
-+        wxZlibInputStream  probeZ( probeFile, wxZLIB_GZIP );
-+        unsigned char      hdr[512];
-+
-+        probeZ.Read( hdr, sizeof( hdr ) );
-+        unsigned long sum = 0;
-+
-+        for( int i = 0; i < 512; i++ )
-+            sum += ( i >= 148 && i < 156 ) ? ' ' : hdr[i];
-+
-+        std::snprintf( amigaBuf, sizeof( amigaBuf ), "probe read %lu sum %lu chk %.8s type %c magic %.6s",
-+                       (unsigned long) probeZ.LastRead(), sum, (const char*) hdr + 148, hdr[156],
-+                       (const char*) hdr + 257 );
-+        AMIGA_MARK( amigaBuf );
-+
-+        wxString nameLocal( (const char*) hdr, wxConvLocal, 100 );
-+        AMIGA_MARK( "probe conv local" );
-+        wxString nameUtf8( (const char*) hdr, wxConvUTF8, 100 );
-+        AMIGA_MARK( "probe conv utf8" );
-+        wxString nameLibc( (const char*) hdr, wxConvLibc, 100 );
-+        AMIGA_MARK( "probe conv libc" );
-+        wxString nameCurrent( (const char*) hdr, *wxConvCurrent, 100 );
-+        AMIGA_MARK( "probe conv current" );
-+        wxDateTime when( wxLongLong( 1700000000L ) * 1000L );
-+        AMIGA_MARK( "probe datetime" );
-+        double d = wxAtof( wxT( "1700000000.5" ) );
-+        AMIGA_MARK( d > 1 ? "probe atof" : "probe atof zero" );
-+        wxDateTime probeNow = wxDateTime::Now();
-+        AMIGA_MARK( probeNow.IsValid() ? "probe now" : "probe now invalid" );
-+        int probeUid = (int) getuid();
-+        int probeGid = (int) getgid();
-+        std::snprintf( amigaBuf, sizeof( amigaBuf ), "probe uid %d gid %d", probeUid, probeGid );
-+        AMIGA_MARK( amigaBuf );
-+        {
-+            AMIGA_MARK( "probe getpwuid" );
-+            struct passwd* ppw = getpwuid( probeUid );
-+            std::snprintf( amigaBuf, sizeof( amigaBuf ), "probe getpwuid %s",
-+                           ( ppw && ppw->pw_name ) ? ppw->pw_name : "-" );
-+            AMIGA_MARK( amigaBuf );
-+        }
-+        {
-+            AMIGA_MARK( "probe getgrgid" );
-+            struct group* pgr = getgrgid( probeGid );
-+            std::snprintf( amigaBuf, sizeof( amigaBuf ), "probe getgrgid %s",
-+                           ( pgr && pgr->gr_name ) ? pgr->gr_name : "-" );
-+            AMIGA_MARK( amigaBuf );
-+        }
-+        wxTarEntry probeEntry;
-+        AMIGA_MARK( "probe entry made" );
-+        probeEntry.SetDateTime( when );
-+        AMIGA_MARK( "probe entry date" );
-+        probeEntry.SetName( nameUtf8, wxPATH_UNIX );
-+        AMIGA_MARK( "probe entry name" );
-+        std::snprintf( amigaBuf, sizeof( amigaBuf ), "probe name %s",
-+                       (const char*) probeEntry.GetName().utf8_str() );
-+        AMIGA_MARK( amigaBuf );
-+    }
-+#endif
-+#ifdef KICAD_AMIGA
 +    int amigaCount = 0;
 +#endif
  
@@ -435,7 +365,7 @@ index cc2a7c8f..2d9d3229 100644
          if( entry->IsDir() )
          {
              delete entry;
-@@ -74,11 +166,21 @@ bool ASSET_ARCHIVE::Load()
+@@ -74,11 +99,21 @@ bool ASSET_ARCHIVE::Load()
          m_fileInfoCache[entry->GetName()] = fi;
  
          offset += length;
