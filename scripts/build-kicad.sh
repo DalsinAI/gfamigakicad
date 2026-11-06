@@ -61,7 +61,7 @@ if [ ! -f "$B/build.ninja" ] || [ "${RECONFIGURE:-0}" = 1 ]; then
         -DBoost_NO_SYSTEM_PATHS=ON -DBoost_USE_STATIC_LIBS=ON \
         -DGLM_INCLUDE_DIR="$DEPS/include" \
         -DZSTD_INCLUDE_DIR="$DEPS/include" -DZSTD_LIBRARY="$DEPS/lib/libzstd.a" \
-        -DLIBGIT2_INCLUDE_DIR="$DEPS/include" -DLIBGIT2_LIBRARY="$DEPS/lib/libgit2.a" \
+        -DLIBGIT2_INCLUDE_DIR="$DEPS/include" -DLIBGIT2_LIBRARY="$DEPS/lib/libgit2.a;$DEPS/lib/libgfamiga_compat.a" \
         -DCMAKE_INSTALL_PREFIX="$WORK/kicad-install" \
         > "$WORK/kicad-configure.log" 2>&1 || { tail -40 "$WORK/kicad-configure.log"; exit 1; }
 fi

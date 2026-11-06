@@ -21,6 +21,9 @@ endif()
 set(CMAKE_C_FLAGS_INIT   "${KC_FLAGS} ${KC_CFLAGS}")
 set(CMAKE_CXX_FLAGS_INIT "${KC_FLAGS} ${KC_CFLAGS}")
 set(CMAKE_EXE_LINKER_FLAGS_INIT "${KC_FLAGS}")
+# GCC's libatomic (std::atomic exchange, libgit2) and libnix's bsdsocket stubs
+set(CMAKE_C_STANDARD_LIBRARIES   "-latomic -lsocket")
+set(CMAKE_CXX_STANDARD_LIBRARIES "-latomic -lsocket")
 # where target headers and libraries are found: the compiler's, our built
 # dependencies, and KC_ROOTS (more prefixes, separated by ;)
 set(CMAKE_FIND_ROOT_PATH "${TC}/m68k-amigaos" "$ENV{DEPS_PREFIX}" $ENV{KC_ROOTS})
