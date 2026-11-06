@@ -92,7 +92,8 @@ log "NDK: $NDK"
 # ---- zlib's calls on the system's z.library (no zlib of our own): libz.a
 # and our zlib.h, for KiCad, libgit2 and the toolkit's streams alike
 $CC $OPT -isystem "$NDK" -I"$HERE/compat/include" -c -o "$WORK/obj/compat/gfamiga_zlib.o" "$HERE/compat/src/gfamiga_zlib.c"
-rm -f "$DEPS/lib/libz.a"; $AR rcs "$DEPS/lib/libz.a" "$WORK/obj/compat/gfamiga_zlib.o"
+$CC $OPT -I"$HERE/compat/include" -c -o "$WORK/obj/compat/gfamiga_zlib_wx.o" "$HERE/compat/src/gfamiga_zlib_wx.c"
+rm -f "$DEPS/lib/libz.a"; $AR rcs "$DEPS/lib/libz.a" "$WORK/obj/compat/gfamiga_zlib.o" "$WORK/obj/compat/gfamiga_zlib_wx.o"
 
 # ---- zstd: libzstd.a
 if ! done_for zstd "$ZSTD_SHA256"; then

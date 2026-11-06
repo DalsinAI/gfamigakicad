@@ -137,6 +137,7 @@ ZEXTERN int ZEXPORT inflateReset( z_streamp strm );
 ZEXTERN int ZEXPORT inflateReset2( z_streamp strm, int windowBits );
 ZEXTERN int ZEXPORT inflatePrime( z_streamp strm, int bits, int value );
 ZEXTERN long ZEXPORT inflateMark( z_streamp strm );
+ZEXTERN int ZEXPORT inflateValidate( z_streamp strm, int check );
 ZEXTERN int ZEXPORT inflateGetHeader( z_streamp strm, gz_headerp head );
 
 ZEXTERN int ZEXPORT compress( Bytef* dest, uLongf* destLen, const Bytef* source, uLong sourceLen );
