@@ -37,11 +37,15 @@ left() { echo $((LIMIT - ($(date +%s) - START))); }
 step() { echo "kicad-amiga: $* ($(( $(date +%s) - START )) s)"; }
 again() { step "not finished, run again"; exit 3; }
 
-# ---- the GFOpenWX Toolkit SDK at the pinned commit: the toolkit's own
-# lab build of it when this machine has that (deps.lock TOOLKIT_SDK_*),
-# else built here
+# ---- the GFOpenWX Toolkit SDK at the pinned commit: the toolkit's released
+# SDK (deps.lock TOOLKIT_SDK_*), else built here
 WX="$WORK/wx"
-SDKTAR=${TOOLKIT_SDK_TARBALL:-"$HOME/AmiCradle-dev/cradle-builds/jobs/$TOOLKIT_SDK_JOB/out/gfopenwx-sdk.tar.gz"}
+SDKTAR=${TOOLKIT_SDK_TARBALL:-"$WORK/dl/$(basename "$TOOLKIT_SDK_URL")"}
+if [ ! -f "$SDKTAR" ] || [ "$(sha256sum "$SDKTAR" | cut -d' ' -f1)" != "$TOOLKIT_SDK_SHA256" ]; then
+    mkdir -p "$(dirname "$SDKTAR")"
+    curl -fsSL --retry 3 -o "$SDKTAR.part" "$TOOLKIT_SDK_URL" && mv "$SDKTAR.part" "$SDKTAR" \
+        || { rm -f "$SDKTAR.part"; step "toolkit SDK download failed, building it"; }
+fi
 if [ "$(cat "$WX/.commit" 2>/dev/null || true)" != "$TOOLKIT_COMMIT" ] && [ -f "$SDKTAR" ] \
    && [ "$(sha256sum "$SDKTAR" | cut -d' ' -f1)" = "$TOOLKIT_SDK_SHA256" ]; then
     step "toolkit SDK from $SDKTAR"
