@@ -12,10 +12,10 @@ index 25324fce..981688e3 100644
      add_subdirectory( 3d_spacenav )
      target_link_libraries( 3d-viewer PRIVATE 3d-viewer_spacenav )
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 420f18bc..f4579e3e 100644
+index 420f18bc..7294ae4b 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -107,6 +107,21 @@ endif()
+@@ -107,6 +107,25 @@ endif()
  ####################################
  # Feature flags
  ####################################
@@ -29,6 +29,10 @@ index 420f18bc..f4579e3e 100644
 +    add_compile_definitions( KICAD_AMIGA )
 +    # wx classes the GFOpenWX Toolkit does not build yet (amiga/amiga_wx_compat.h)
 +    include_directories( ${CMAKE_SOURCE_DIR}/amiga )
++    # our font headers before KiCad's: gfopenfont.library in place of FreeType,
++    # HarfBuzz and Fontconfig; the Open SDK's library headers (proto/gfopenfont.h)
++    include_directories( BEFORE ${CMAKE_SOURCE_DIR}/amiga/include )
++    include_directories( SYSTEM ${KICAD_AMIGA_SDK_INCLUDE} )
 +    # GL/gl.h and GL/glu.h until the toolkit has an OpenGL canvas
 +    include_directories( ${CMAKE_SOURCE_DIR}/amiga/glstub ${CMAKE_SOURCE_DIR}/thirdparty/glad/include )
 +    add_compile_options( "$<$<COMPILE_LANGUAGE:CXX>:SHELL:-include amiga_wx_compat.h>" )
@@ -37,7 +41,7 @@ index 420f18bc..f4579e3e 100644
  option( KICAD_SPICE_QA
      "Build software Quality assurance unit tests for spice (default ON)"
      ON )
-@@ -831,7 +846,7 @@ find_package(ZSTD REQUIRED)
+@@ -831,7 +850,7 @@ find_package(ZSTD REQUIRED)
  #
  find_package( CURL REQUIRED )
  
@@ -46,7 +50,28 @@ index 420f18bc..f4579e3e 100644
      find_package( SPNAV REQUIRED )
      include_directories( SYSTEM ${SPNAV_INCLUDE_DIR} )
  endif()
-@@ -884,8 +899,17 @@ include( MinGWResourceCompiler )
+@@ -869,6 +888,12 @@ if( MSVC )
+ set( FREETYPE_MIN_VERSION 2.11.1 )
+ endif()
+ 
++if( KICAD_AMIGA )
++    # gfopenfont.library finds, shapes and outlines the fonts
++    set( FREETYPE_LIBRARIES "" )
++    set( HarfBuzz_LIBRARIES "" )
++    set( Fontconfig_LIBRARIES "" )
++else()
+ find_package( Freetype ${FREETYPE_MIN_VERSION} REQUIRED )
+ include_directories( SYSTEM ${FREETYPE_INCLUDE_DIRS} )
+ 
+@@ -876,6 +901,7 @@ find_package( HarfBuzz REQUIRED )
+ include_directories( SYSTEM ${HarfBuzz_INCLUDE_DIRS} )
+ 
+ find_package( Fontconfig REQUIRED )
++endif()
+ 
+ # Include MinGW resource compiler.
+ include( MinGWResourceCompiler )
+@@ -884,8 +910,17 @@ include( MinGWResourceCompiler )
  find_package( ngspice REQUIRED )
  
  # Find OpenCascade, required for STEP plugin and tools
@@ -65,7 +90,7 @@ index 420f18bc..f4579e3e 100644
      MESSAGE( FATAL_ERROR "================================================================\n"
                           " OpenCASCADE was not found!\n"
                           "================================================================\n")
-@@ -954,9 +978,11 @@ set( INC_AFTER
+@@ -954,9 +989,11 @@ set( INC_AFTER
  # Find Python and other scripting resources
  #
  
@@ -77,7 +102,7 @@ index 420f18bc..f4579e3e 100644
  
  set( PythonInterp_FIND_VERSION 3.6 )
  set( PythonLibs_FIND_VERSION 3.6 )
-@@ -1014,7 +1040,14 @@ else()
+@@ -1014,7 +1051,14 @@ else()
  endif()
  message( STATUS "Python module install path: ${PYTHON_DEST}" )
  
@@ -92,7 +117,7 @@ index 420f18bc..f4579e3e 100644
  
  # pybind11 is header-only, so include the subdir
  # USE_CROSSCOMPILING is needed to avoid pybind11 trying to run a non-native intrepreter
-@@ -1075,6 +1108,8 @@ if( WXWIDGETS_REQUESTED_TOOLKIT
+@@ -1075,6 +1119,8 @@ if( WXWIDGETS_REQUESTED_TOOLKIT
      message( WARNING "wxWidgets and wxPython must be based on the same toolkit.\n"
          "It will be fixed automatically if you skip the '--toolkit=xxx' "
          "wxWidgets_CONFIG_OPTIONS parameter.")
@@ -101,7 +126,7 @@ index 420f18bc..f4579e3e 100644
  elseif( UNIX AND NOT APPLE )
      # Force the use of GTK3 on Linux
      set( wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} "--toolkit=gtk3" )
-@@ -1091,9 +1126,14 @@ else()
+@@ -1091,9 +1137,14 @@ else()
  endif()
  
  # See line 49 of cmake/FindwxWidgets.cmake
@@ -116,7 +141,7 @@ index 420f18bc..f4579e3e 100644
  
  # Include wxWidgets macros.
  include( ${wxWidgets_USE_FILE} )
-@@ -1108,7 +1148,7 @@ if( wxWidgets_FIND_STYLE STREQUAL "win32" )
+@@ -1108,7 +1159,7 @@ if( wxWidgets_FIND_STYLE STREQUAL "win32" )
          add_compile_definitions( __WXGTK__ )
      endif()
  elseif( _wx_selected_config )
@@ -125,7 +150,7 @@ index 420f18bc..f4579e3e 100644
  endif()
  
  if( KICAD_WX_PORT )
-@@ -1138,7 +1178,9 @@ message(STATUS "wxHAS_GLX=${wxWidgets_HAS_GLX}")
+@@ -1138,7 +1189,9 @@ message(STATUS "wxHAS_GLX=${wxWidgets_HAS_GLX}")
  message(STATUS "wxHAS_EGL=${wxWidgets_HAS_EGL}")
  
  # Find OpenGL with GLU
@@ -152,10 +177,22 @@ index 8daf035a..3bc70266 100644
          set( KICAD_BUILD_ARCH_ARM64 1 )
      elseif( CMAKE_SYSTEM_PROCESSOR MATCHES "arm|ARM" )
 diff --git a/common/CMakeLists.txt b/common/CMakeLists.txt
-index 0144ac4f..ddfe135f 100644
+index 0144ac4f..cd07fc44 100644
 --- a/common/CMakeLists.txt
 +++ b/common/CMakeLists.txt
-@@ -315,7 +315,9 @@ set( KICOMMON_SRCS
+@@ -90,8 +90,9 @@ install( FILES
+ set( KICOMMON_SRCS
+     # Fonts
+     newstroke_font.cpp
+-    font/fontconfig.cpp
+-    font/version_info.cpp
++    $<IF:$<BOOL:${KICAD_AMIGA}>,${CMAKE_SOURCE_DIR}/amiga/font/fontconfig_gfopenfont.cpp,font/fontconfig.cpp>
++    $<IF:$<BOOL:${KICAD_AMIGA}>,${CMAKE_SOURCE_DIR}/amiga/font/version_info_gfopenfont.cpp,font/version_info.cpp>
++    $<$<BOOL:${KICAD_AMIGA}>:${CMAKE_SOURCE_DIR}/amiga/font/gfopenfont_kicad.cpp>
+ 
+     # Gal
+     gal/color4d.cpp
+@@ -315,7 +316,9 @@ set( KICOMMON_SRCS
      singleton.cpp
      pgm_base.cpp
  
@@ -166,7 +203,7 @@ index 0144ac4f..ddfe135f 100644
  
      io/kicad/kicad_io_utils.cpp    # needed by richio
      io/io_base.cpp
-@@ -331,7 +333,7 @@ set( KICOMMON_SRCS
+@@ -331,7 +334,7 @@ set( KICOMMON_SRCS
      startwizard/startwizard_provider_settings.cpp
      )
  
@@ -175,7 +212,7 @@ index 0144ac4f..ddfe135f 100644
      list( APPEND KICOMMON_SRCS
          spacenav/libspnav_driver.cpp
      )
-@@ -855,7 +857,7 @@ set( COMMON_SRCS
+@@ -855,7 +858,7 @@ set( COMMON_SRCS
      properties/property_mgr.cpp
      properties/std_optional_variants.cpp
  
@@ -184,7 +221,7 @@ index 0144ac4f..ddfe135f 100644
  
      http_lib/http_lib_connection.cpp
      http_lib/http_lib_settings.cpp
-@@ -864,7 +866,7 @@ set( COMMON_SRCS
+@@ -864,7 +867,7 @@ set( COMMON_SRCS
      )
  
  # This needs to be in the common library until draw_panel_gal is moved to kicommon
@@ -193,7 +230,7 @@ index 0144ac4f..ddfe135f 100644
      list( APPEND COMMON_SRCS
          spacenav/spnav_2d_plugin.cpp
      )
-@@ -926,7 +928,7 @@ target_link_libraries( common
+@@ -926,7 +929,7 @@ target_link_libraries( common
      compoundfilereader
      Boost::headers
      # Database support needs these two
@@ -202,7 +239,7 @@ index 0144ac4f..ddfe135f 100644
      Boost::locale
      ${wxWidgets_LIBRARIES}
      ${EXTRA_LIBS}
-@@ -963,9 +965,11 @@ target_include_directories( common PUBLIC
+@@ -963,9 +966,11 @@ target_include_directories( common PUBLIC
      $<TARGET_PROPERTY:magic_enum,INTERFACE_INCLUDE_DIRECTORIES>
      )
  
@@ -343,9 +380,20 @@ index 5c1423fd..18dae543 100644
  
          case GAL_TYPE_CAIRO:
 diff --git a/common/gal/CMakeLists.txt b/common/gal/CMakeLists.txt
-index 19537f46..257029a1 100644
+index 19537f46..2883ab08 100644
 --- a/common/gal/CMakeLists.txt
 +++ b/common/gal/CMakeLists.txt
+@@ -4,8 +4,8 @@ set( FONT_SRCS
+     ../font/font.cpp
+     ../font/glyph.cpp
+     ../font/stroke_font.cpp
+-	../font/outline_font.cpp
+-	../font/outline_decomposer.cpp
++	$<IF:$<BOOL:${KICAD_AMIGA}>,${CMAKE_SOURCE_DIR}/amiga/font/outline_font_gfopenfont.cpp,../font/outline_font.cpp>
++	$<IF:$<BOOL:${KICAD_AMIGA}>,${CMAKE_SOURCE_DIR}/amiga/font/outline_decomposer_gfopenfont.cpp,../font/outline_decomposer.cpp>
+     ../font/text_attributes.cpp
+ 	)
+ 
 @@ -53,6 +53,11 @@ set( GAL_SRCS
      cairo/cairo_print.cpp
      )
@@ -388,6 +436,249 @@ index 39e976b9..be106671 100644
      // Install a temporary SIGABRT handler to recover from abort() calls triggered by
      // buggy 3Dconnexion drivers. The driver on some macOS versions calls std::terminate()
      // from a noexcept context inside NlCreate, which calls abort(). By catching SIGABRT
+diff --git a/common/plotters/PDF_plotter.cpp b/common/plotters/PDF_plotter.cpp
+index 4bd648e3..9691cb80 100644
+--- a/common/plotters/PDF_plotter.cpp
++++ b/common/plotters/PDF_plotter.cpp
+@@ -2346,8 +2346,13 @@ VECTOR2I PDF_PLOTTER::renderWord( const wxString& aWord, const VECTOR2I& aPositi
+ 
+         if( aFont->IsOutline() )
+         {
++#ifdef KICAD_AMIGA
++            KIFONT::OUTLINE_FONT* outline = static_cast<KIFONT::OUTLINE_FONT*>( aFont );
++            styleFlags = ( outline->FaceIsItalic() ? 1 : 0 ) | ( outline->FaceIsBold() ? 2 : 0 );
++#else
+             if( const FT_Face& face = static_cast<KIFONT::OUTLINE_FONT*>( aFont )->GetFace() )
+                 styleFlags = (int) face->style_flags;
++#endif
+         }
+ 
+         wxLogTrace( tracePdfPlotter, "renderWord enter word='%s' bold=%d italic=%d textStyle=%u styleFlags=%d",
+diff --git a/common/plotters/pdf_outline_font.cpp b/common/plotters/pdf_outline_font.cpp
+index ec1662bb..5804ac99 100644
+--- a/common/plotters/pdf_outline_font.cpp
++++ b/common/plotters/pdf_outline_font.cpp
+@@ -31,14 +31,24 @@
+ #include <cmath>
+ 
+ #include <fmt/format.h>
++#ifndef KICAD_AMIGA
+ #include <harfbuzz/hb-ft.h>
+ #include <harfbuzz/hb.h>
++#endif
+ #include <wx/ffile.h>
+ 
+ #include <core/utf8.h>
+ 
++#ifdef KICAD_AMIGA
++// gfopenfont.library in place of FreeType and HarfBuzz
++#include <font/gfopenfont_kicad.h>
++#include <exec/types.h>
++#include <libraries/gfopenfont.h>
++#include <proto/gfopenfont.h>
++#else
+ #include <ft2build.h>
+ #include FT_FREETYPE_H
++#endif
+ 
+ #include <font/font.h>
+ 
+@@ -126,6 +136,39 @@ PDF_OUTLINE_FONT_SUBSET::PDF_OUTLINE_FONT_SUBSET( KIFONT::OUTLINE_FONT* aFont, u
+         m_toUnicodeHandle( -1 ),
+         m_fontHandle( -1 )
+ {
++#ifdef KICAD_AMIGA
++    OFFace* face = aFont ? aFont->GetFace() : nullptr;
++
++    if( face )
++    {
++        // head: unitsPerEm at 18, xMin yMin xMax yMax at 36; hhea: ascender, descender at 4
++        unsigned upem = gfopenfont::TableU16( face, "head", 18, 0 );
++
++        if( upem > 0 )
++            m_unitsPerEm = static_cast<double>( upem );
++
++        double yMax = gfopenfont::TableS16( face, "head", 42, 0 );
++        m_ascent = unitsToPdf( gfopenfont::TableS16( face, "hhea", 4, 0 ), m_unitsPerEm );
++        m_descent = unitsToPdf( gfopenfont::TableS16( face, "hhea", 6, 0 ), m_unitsPerEm );
++        m_capHeight = unitsToPdf( yMax, m_unitsPerEm );
++        m_bboxMinX = unitsToPdf( gfopenfont::TableS16( face, "head", 36, 0 ), m_unitsPerEm );
++        m_bboxMinY = unitsToPdf( gfopenfont::TableS16( face, "head", 38, 0 ), m_unitsPerEm );
++        m_bboxMaxX = unitsToPdf( gfopenfont::TableS16( face, "head", 40, 0 ), m_unitsPerEm );
++        m_bboxMaxY = unitsToPdf( yMax, m_unitsPerEm );
++
++        if( aFont->FaceIsItalic() || aFont->IsItalic() )
++            m_italicAngle = -12.0;
++
++        if( aFont->IsBold() )
++            m_stemV = 140.0;
++
++        if( aFont->FaceIsFixedWidth() )
++            m_flags |= 1;
++
++        if( aFont->IsItalic() )
++            m_flags |= 64;
++    }
++#else
+     FT_Face face = aFont ? aFont->GetFace() : nullptr;
+ 
+     if( face )
+@@ -155,6 +198,7 @@ PDF_OUTLINE_FONT_SUBSET::PDF_OUTLINE_FONT_SUBSET( KIFONT::OUTLINE_FONT* aFont, u
+         if( aFont->IsItalic() )
+             m_flags |= 64;
+     }
++#endif
+ 
+     m_widths.resize( 1, 0.0 );
+     m_cidToGid.resize( 1, 0 );
+@@ -190,6 +234,22 @@ uint16_t PDF_OUTLINE_FONT_SUBSET::EnsureGlyph( uint32_t aGlyphIndex, const std::
+ 
+     ensureNotdef();
+ 
++#ifdef KICAD_AMIGA
++    OFFace* face = m_font ? m_font->GetFace() : nullptr;
++
++    if( !face )
++        return 0;
++
++    // the advance in font units, from hmtx (hhea's numberOfHMetrics at 34;
++    // glyphs past it take the last metric's advance)
++    unsigned numMetrics = gfopenfont::TableU16( face, "hhea", 34, 0 );
++
++    if( numMetrics == 0 )
++        return 0;
++
++    unsigned metric = std::min<unsigned>( aGlyphIndex, numMetrics - 1 );
++    double   rawAdvance266 = 64.0 * gfopenfont::TableU16( face, "hmtx", metric * 4, 0 );
++#else
+     FT_Face face = m_font ? m_font->GetFace() : nullptr;
+ 
+     if( !face )
+@@ -201,6 +261,7 @@ uint16_t PDF_OUTLINE_FONT_SUBSET::EnsureGlyph( uint32_t aGlyphIndex, const std::
+     // For FT_LOAD_NO_SCALE the advance.x should be in font units (26.6) unless metrics differ.
+     // We divide by 64.0 to get raw font units; convert to our internal PDF user units via unitsToPdf.
+     double rawAdvance266 = static_cast<double>( face->glyph->advance.x );
++#endif
+     double rawAdvanceFontUnits = rawAdvance266 / 64.0;
+     double advance = unitsToPdf( rawAdvanceFontUnits, m_unitsPerEm );
+ 
+@@ -431,15 +492,24 @@ PDF_OUTLINE_FONT_SUBSET* PDF_OUTLINE_FONT_MANAGER::ensureSubset( KIFONT::OUTLINE
+     // is set. (m_fakeItal only indicates substitution missing an italic variant.)
+     bool faceHasRealItalic = false;
+     bool faceHasRealBold   = false;
++#ifdef KICAD_AMIGA
++    if( aFont->GetFace() )
++    {
++        faceHasRealItalic = aFont->FaceIsItalic();
++        faceHasRealBold   = aFont->FaceIsBold();
++    }
++#else
+     if( const FT_Face& face = aFont->GetFace() )
+     {
+         faceHasRealItalic = ( face->style_flags & FT_STYLE_FLAG_ITALIC ) != 0;
+         faceHasRealBold   = ( face->style_flags & FT_STYLE_FLAG_BOLD ) != 0;
+     }
++#endif
+ 
+     bool needSyntheticItalic = aItalic && !faceHasRealItalic; // ignore fake italic
+     bool needSyntheticBold   = aBold && !faceHasRealBold;     // ignore fake bold
+ 
++#ifndef KICAD_AMIGA
+     if( std::getenv( "KICAD_DEBUG_SYN_STYLE" ) )
+     {
+         const FT_Face& face = aFont->GetFace();
+@@ -457,6 +527,7 @@ PDF_OUTLINE_FONT_SUBSET* PDF_OUTLINE_FONT_MANAGER::ensureSubset( KIFONT::OUTLINE
+                     (int) needSyntheticItalic, (int) needSyntheticBold, (int) aItalic, (int) aBold,
+                     subsetPtr->Font()->GetFace() ? subsetPtr->Font()->GetFace()->face_index : 0 );
+     }
++#endif
+ 
+     if( needSyntheticItalic || needSyntheticBold )
+     {
+@@ -499,6 +570,75 @@ void PDF_OUTLINE_FONT_MANAGER::EncodeString( const wxString& aText, KIFONT::OUTL
+     UTF8        utf8Text( aText );
+     std::string textUtf8 = utf8Text.substr();
+ 
++#ifdef KICAD_AMIGA
++    // shaped at the face's units per em, so the 26.6 answers are font units times 64
++    std::vector<struct OFGlyph> glyphs;
++    OFFace*                     face = aFont->GetFace();
++
++    if( !face )
++        return;
++
++    {
++        std::lock_guard<std::mutex> guard( KIFONT::OUTLINE_FONT::FaceMutex() );
++
++        OF_SetSize( face, (ULONG) subset->UnitsPerEm() );
++
++        ULONG count = OF_ShapeText( face, (CONST_STRPTR) textUtf8.c_str(), textUtf8.size(),
++                                    nullptr, 0 );
++
++        if( count )
++        {
++            glyphs.resize( count );
++            count = OF_ShapeText( face, (CONST_STRPTR) textUtf8.c_str(), textUtf8.size(),
++                                  glyphs.data(), count );
++            glyphs.resize( std::min<size_t>( count, glyphs.size() ) );
++        }
++    }
++
++    unsigned int glyphCount = glyphs.size();
++
++    if( glyphCount == 0 )
++        return;
++
++    PDF_OUTLINE_FONT_RUN run;
++    run.m_subset = subset;
++
++    bool hasVisibleGlyph = false;
++
++    for( unsigned int ii = 0; ii < glyphCount; ++ii )
++    {
++        // a fallback face's glyph is not in this font's file: it plots as .notdef
++        uint32_t glyphIndex = glyphs[ii].gl_Face == 0 ? glyphs[ii].gl_Glyph : 0;
++
++        size_t clusterStart = glyphs[ii].gl_Cluster;
++        size_t clusterEnd = ( ii + 1 < glyphCount ) ? glyphs[ii + 1].gl_Cluster : textUtf8.size();
++
++        if( clusterEnd < clusterStart )
++            std::swap( clusterStart, clusterEnd );
++
++        std::string clusterUtf8 = textUtf8.substr( clusterStart, clusterEnd - clusterStart );
++        std::u32string unicode = utf8ToU32( clusterUtf8 );
++
++        if( unicode.empty() )
++            unicode.push_back( 0 );
++
++        uint16_t cid = subset->EnsureGlyph( glyphIndex, unicode );
++
++        if( cid != 0 )
++            hasVisibleGlyph = true;
++
++        run.m_bytes.push_back( static_cast<char>( ( cid >> 8 ) & 0xFF ) );
++        run.m_bytes.push_back( static_cast<char>( cid & 0xFF ) );
++
++        PDF_OUTLINE_FONT_GLYPH glyph;
++        glyph.cid = cid;
++        glyph.xAdvance = unitsToPdf( glyphs[ii].gl_XAdvance / 64.0, subset->UnitsPerEm() );
++        glyph.yAdvance = unitsToPdf( glyphs[ii].gl_YAdvance / 64.0, subset->UnitsPerEm() );
++        glyph.xOffset = unitsToPdf( glyphs[ii].gl_XOffset / 64.0, subset->UnitsPerEm() );
++        glyph.yOffset = unitsToPdf( glyphs[ii].gl_YOffset / 64.0, subset->UnitsPerEm() );
++        run.m_glyphs.push_back( glyph );
++    }
++#else
+     hb_buffer_t* buffer = hb_buffer_create();
+     hb_buffer_set_cluster_level( buffer, HB_BUFFER_CLUSTER_LEVEL_MONOTONE_GRAPHEMES );
+     hb_buffer_add_utf8( buffer, textUtf8.c_str(), (int) textUtf8.size(), 0, (int) textUtf8.size() );
+@@ -566,6 +706,7 @@ void PDF_OUTLINE_FONT_MANAGER::EncodeString( const wxString& aText, KIFONT::OUTL
+     }
+ 
+     hb_buffer_destroy( buffer );
++#endif
+ 
+     if( hasVisibleGlyph && !run.m_bytes.empty() )
+         aRuns->push_back( std::move( run ) );
 diff --git a/common/single_top.cpp b/common/single_top.cpp
 index 47e07280..350e2679 100644
 --- a/common/single_top.cpp
@@ -463,6 +754,57 @@ index 09fb5e16..02bce0ec 100644
  
      while( m_refreshRunning.load() )
      {
+diff --git a/include/font/fontconfig.h b/include/font/fontconfig.h
+index d434d8d5..00766124 100644
+--- a/include/font/fontconfig.h
++++ b/include/font/fontconfig.h
+@@ -1,3 +1,7 @@
++/* Amiga: the gfopenfont.library version lives in amiga/include */
++#ifdef KICAD_AMIGA
++#include "../../amiga/include/font/fontconfig.h"
++#else
+ /*
+  * This program source code file is part of KiCad, a free EDA CAD application.
+  *
+@@ -144,3 +148,4 @@ KICOMMON_API fontconfig::FONTCONFIG* Fontconfig();
+ 
+ 
+ #endif //KICAD_FONTCONFIG_H
++#endif // KICAD_AMIGA
+diff --git a/include/font/outline_decomposer.h b/include/font/outline_decomposer.h
+index 43910c98..eb470cf6 100644
+--- a/include/font/outline_decomposer.h
++++ b/include/font/outline_decomposer.h
+@@ -1,3 +1,7 @@
++/* Amiga: the gfopenfont.library version lives in amiga/include */
++#ifdef KICAD_AMIGA
++#include "../../amiga/include/font/outline_decomposer.h"
++#else
+ /*
+  * This program source code file is part of KICAD, a free EDA CAD application.
+  *
+@@ -130,3 +134,4 @@ private:
+ } //namespace KIFONT
+ 
+ #endif      // OUTLINE_DECOMPOSER_H
++#endif // KICAD_AMIGA
+diff --git a/include/font/outline_font.h b/include/font/outline_font.h
+index 2df163dc..9b7ae4c8 100644
+--- a/include/font/outline_font.h
++++ b/include/font/outline_font.h
+@@ -1,3 +1,7 @@
++/* Amiga: the gfopenfont.library version lives in amiga/include */
++#ifdef KICAD_AMIGA
++#include "../../amiga/include/font/outline_font.h"
++#else
+ /*
+  * This program source code file is part of KICAD, a free EDA CAD application.
+  *
+@@ -230,3 +234,4 @@ private:
+ } //namespace KIFONT
+ 
+ #endif // OUTLINE_FONT_H_
++#endif // KICAD_AMIGA
 diff --git a/include/kicad_curl/kicad_curl.h b/include/kicad_curl/kicad_curl.h
 index 9526e70f..d0b6fd80 100644
 --- a/include/kicad_curl/kicad_curl.h

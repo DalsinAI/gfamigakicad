@@ -47,7 +47,7 @@ if [ ! -f "$B/build.ninja" ] || [ "${RECONFIGURE:-0}" = 1 ]; then
         -DCMAKE_CXX_FLAGS_RELEASE="-O2 -DNDEBUG" -DCMAKE_C_FLAGS_RELEASE="-O2 -DNDEBUG" \
         -DCMAKE_PREFIX_PATH="/" \
         -DwxWidgets_CONFIG_EXECUTABLE="$WXSDK/bin/wx-config" \
-        -DKC_EXTRA_LIBS="-Wl,--start-group -L$SYSLIBS/lib -lcairo -lpixman-1 -lharfbuzz -lfontconfig -lexpat -lfreetype -lpng -lcurl -lnghttp2 -lz -Wl,--end-group" -DKICAD_AMIGA=ON -DKICAD_WAYLAND=OFF -DKICAD_HOST_LEMON="$HOST/bin/lemon" \
+        -DKC_EXTRA_LIBS="-Wl,--start-group -L$SYSLIBS/lib -lcairo -lpixman-1 -lharfbuzz -lfontconfig -lexpat -lfreetype -lpng -lcurl -lnghttp2 -lz -Wl,--end-group" -DKICAD_AMIGA=ON -DKICAD_AMIGA_SDK_INCLUDE="$WORK/src/opensdk/Include" -DKICAD_WAYLAND=OFF -DKICAD_HOST_LEMON="$HOST/bin/lemon" \
         -DCAIRO_INCLUDE_DIR="$SYSLIBS/include/cairo" -DCAIRO_LIBRARY="$SYSLIBS/lib/libcairo.a" \
         -DPIXMAN_INCLUDE_DIR="$SYSLIBS/include/pixman-1" -DPIXMAN_LIBRARY="$SYSLIBS/lib/libpixman-1.a" \
         -DFontconfig_INCLUDE_DIR="$SYSLIBS/include" -DFontconfig_LIBRARY="$SYSLIBS/lib/libfontconfig.a" \
