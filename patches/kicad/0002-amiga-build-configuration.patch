@@ -706,13 +706,13 @@ index 5c1423fd..18dae543 100644
  
          case GAL_TYPE_CAIRO:
 diff --git a/common/eda_base_frame.cpp b/common/eda_base_frame.cpp
-index 91ea9ea9..e46c94f0 100644
+index 91ea9ea9..8d98190f 100644
 --- a/common/eda_base_frame.cpp
 +++ b/common/eda_base_frame.cpp
-@@ -92,6 +92,13 @@
- #include <api/api_server.h>
- #endif
+@@ -90,9 +90,17 @@
  
+ #ifdef KICAD_IPC_API
+ #include <api/api_server.h>
 +#ifdef KICAD_AMIGA
 +extern void KicadAmigaStep( const char* aWhere );
 +#define AMIGA_MARK( x ) KicadAmigaStep( x )
@@ -720,10 +720,14 @@ index 91ea9ea9..e46c94f0 100644
 +#define AMIGA_MARK( x )
 +#endif
 +
+ #endif
  
+ 
++
  // Minimum window size
  static const wxSize minSizeLookup( FRAME_T aFrameType, wxWindow* aWindow )
-@@ -142,34 +149,57 @@ BEGIN_EVENT_TABLE( EDA_BASE_FRAME, wxFrame )
+ {
+@@ -142,34 +150,57 @@ BEGIN_EVENT_TABLE( EDA_BASE_FRAME, wxFrame )
  
  void EDA_BASE_FRAME::commonInit( FRAME_T aFrameType )
  {
@@ -781,7 +785,7 @@ index 91ea9ea9..e46c94f0 100644
  
      Connect( ID_AUTO_SAVE_TIMER, wxEVT_TIMER,
               wxTimerEventHandler( EDA_BASE_FRAME::onAutoSaveTimer ) );
-@@ -177,8 +207,10 @@ void EDA_BASE_FRAME::commonInit( FRAME_T aFrameType )
+@@ -177,8 +208,10 @@ void EDA_BASE_FRAME::commonInit( FRAME_T aFrameType )
      // hook wxEVT_CLOSE_WINDOW so we can call SaveSettings().  This function seems
      // to be called before any other hook for wxCloseEvent, which is necessary.
      Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( EDA_BASE_FRAME::windowClosing ) );
@@ -792,7 +796,7 @@ index 91ea9ea9..e46c94f0 100644
  }
  
  
-@@ -191,13 +223,20 @@ EDA_BASE_FRAME::EDA_BASE_FRAME( wxWindow* aParent, FRAME_T aFrameType, const wxS
+@@ -191,13 +224,20 @@ EDA_BASE_FRAME::EDA_BASE_FRAME( wxWindow* aParent, FRAME_T aFrameType, const wxS
          KIWAY_HOLDER( aKiway, KIWAY_HOLDER::FRAME ),
          UNITS_PROVIDER( aIuScale, EDA_UNITS::MM )
  {
@@ -813,11 +817,119 @@ index 91ea9ea9..e46c94f0 100644
  
      Bind( wxEVT_DPI_CHANGED,
            [&]( wxDPIChangedEvent& aEvent )
+@@ -1049,18 +1089,25 @@ void EDA_BASE_FRAME::LoadWindowState( const wxString& aFileName )
+ 
+ void EDA_BASE_FRAME::LoadWindowState( const WINDOW_STATE& aState )
+ {
++    AMIGA_MARK( "basels 1090" );
+     bool wasDefault = false;
++    AMIGA_MARK( "basels 1091" );
+ 
+     m_framePos.x  = aState.pos_x;
++    AMIGA_MARK( "basels 1093" );
+     m_framePos.y  = aState.pos_y;
++    AMIGA_MARK( "basels 1094" );
+     m_frameSize.x = aState.size_x;
++    AMIGA_MARK( "basels 1095" );
+     m_frameSize.y = aState.size_y;
++    AMIGA_MARK( "basels 1096" );
+ 
+     wxLogTrace( traceDisplayLocation, wxS( "Config position (%d, %d) with size (%d, %d)" ),
+                 m_framePos.x, m_framePos.y, m_frameSize.x, m_frameSize.y );
+ 
+     // Ensure minimum size is set if the stored config was zero-initialized
+     wxSize minSize = minSizeLookup( m_ident, this );
++    AMIGA_MARK( "basels 1102" );
+ 
+     if( m_frameSize.x < minSize.x || m_frameSize.y < minSize.y )
+     {
+@@ -1072,6 +1119,7 @@ void EDA_BASE_FRAME::LoadWindowState( const WINDOW_STATE& aState )
+     }
+ 
+     wxLogTrace( traceDisplayLocation, wxS( "Number of displays: %d" ), wxDisplay::GetCount() );
++    AMIGA_MARK( "basels 1113" );
+ 
+     if( aState.display >= wxDisplay::GetCount() )
+     {
+@@ -1137,6 +1185,7 @@ void EDA_BASE_FRAME::LoadWindowState( const WINDOW_STATE& aState )
+                 m_framePos.x, m_framePos.y, m_frameSize.x, m_frameSize.y );
+ 
+     SetSize( m_framePos.x, m_framePos.y, m_frameSize.x, m_frameSize.y );
++    AMIGA_MARK( "basels 1178" );
+ 
+     // Center the window if we reset to default
+     if( m_framePos.x == -1 )
+@@ -1148,7 +1197,9 @@ void EDA_BASE_FRAME::LoadWindowState( const WINDOW_STATE& aState )
+ 
+     // Record the frame sizes in an un-maximized state
+     m_normalFrameSize = m_frameSize;
++    AMIGA_MARK( "basels 1189" );
+     m_normalFramePos  = m_framePos;
++    AMIGA_MARK( "basels 1190" );
+ 
+     // Maximize if we were maximized before
+     if( aState.maximized || ( wasDefault && m_maximizeByDefault ) )
+@@ -1158,6 +1209,7 @@ void EDA_BASE_FRAME::LoadWindowState( const WINDOW_STATE& aState )
+     }
+ 
+     m_displayIndex = wxDisplay::GetFromWindow( this );
++    AMIGA_MARK( "basels 1199" );
+ }
+ 
+ 
+@@ -1216,13 +1268,19 @@ void EDA_BASE_FRAME::ensureWindowIsOnScreen()
+ 
+ void EDA_BASE_FRAME::LoadWindowSettings( const WINDOW_SETTINGS* aCfg )
+ {
++    AMIGA_MARK( "basels 1257" );
+     LoadWindowState( aCfg->state );
++    AMIGA_MARK( "basels 1258" );
+ 
+     m_perspective = aCfg->perspective;
++    AMIGA_MARK( "basels 1260" );
+     m_auiLayoutState = std::make_unique<nlohmann::json>( aCfg->aui_state );
++    AMIGA_MARK( "basels 1261" );
+     m_mruPath = aCfg->mru_path;
++    AMIGA_MARK( "basels 1262" );
+ 
+     TOOLS_HOLDER::CommonSettingsChanged();
++    AMIGA_MARK( "basels 1264" );
+ }
+ 
+ 
+@@ -1281,15 +1339,19 @@ void EDA_BASE_FRAME::SaveWindowSettings( WINDOW_SETTINGS* aCfg )
+ 
+ void EDA_BASE_FRAME::LoadSettings( APP_SETTINGS_BASE* aCfg )
+ {
++    AMIGA_MARK( "basels 1322" );
+     LoadWindowSettings( GetWindowSettings( aCfg ) );
++    AMIGA_MARK( "basels 1323" );
+ 
+     // Get file history size from common settings
+     int fileHistorySize = Pgm().GetCommonSettings()->m_System.file_history_size;
++    AMIGA_MARK( "basels 1326" );
+ 
+     // Load the recently used files into the history menu
+     m_fileHistory = new FILE_HISTORY( (unsigned) std::max( 1, fileHistorySize ),
+                                       ID_FILE1, ID_FILE_LIST_CLEAR );
+     m_fileHistory->Load( *aCfg );
++    AMIGA_MARK( "basels 1331" );
+ }
+ 
+ 
+@@ -1330,6 +1392,7 @@ WINDOW_SETTINGS* EDA_BASE_FRAME::GetWindowSettings( APP_SETTINGS_BASE* aCfg )
+ 
+ APP_SETTINGS_BASE* EDA_BASE_FRAME::config() const
+ {
++    AMIGA_MARK( "basels 1371" );
+     // KICAD_MANAGER_FRAME overrides this
+     return Kiface().KifaceSettings();
+ }
 diff --git a/common/eda_draw_frame.cpp b/common/eda_draw_frame.cpp
-index b2e5f4b7..01272ab8 100644
+index b2e5f4b7..caeda298 100644
 --- a/common/eda_draw_frame.cpp
 +++ b/common/eda_draw_frame.cpp
-@@ -83,6 +83,14 @@
+@@ -83,6 +83,15 @@
  #include <wx/snglinst.h>
  #include <wx/fdrepdlg.h>
  #include <tool/editor_conditions.h>
@@ -829,10 +941,11 @@ index b2e5f4b7..01272ab8 100644
 +#endif
 +
 +
++
  
  #define FR_HISTORY_LIST_CNT     10   ///< Maximum size of the find/replace history stacks.
  
-@@ -105,53 +113,84 @@ EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrame
+@@ -105,53 +114,84 @@ EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrame
          m_socketServer( nullptr ),
          m_lastToolbarIconSize( 0 )
  {
@@ -917,7 +1030,7 @@ index b2e5f4b7..01272ab8 100644
  
      Bind( wxEVT_DPI_CHANGED,
            [&]( wxDPIChangedEvent& aEvent )
-@@ -797,13 +836,18 @@ void EDA_DRAW_FRAME::OnSize( wxSizeEvent& SizeEv )
+@@ -797,13 +837,18 @@ void EDA_DRAW_FRAME::OnSize( wxSizeEvent& SizeEv )
  
  void EDA_DRAW_FRAME::updateStatusBarWidths()
  {
@@ -936,7 +1049,7 @@ index b2e5f4b7..01272ab8 100644
  
      std::vector<int> dims = {
          // remainder of status bar on far left is set to a default or whatever is left over.
-@@ -833,16 +877,19 @@ void EDA_DRAW_FRAME::updateStatusBarWidths()
+@@ -833,16 +878,19 @@ void EDA_DRAW_FRAME::updateStatusBarWidths()
          // constraint mode
          KIUI::GetTextSize(  _( "Constrain to H, V, 45" ), stsbar).x + spacer
      };
@@ -955,6 +1068,50 @@ index b2e5f4b7..01272ab8 100644
 +    AMIGA_MARK( "drawsb 883" );
      return new KISTATUSBAR( number, this, id, KISTATUSBAR::STYLE_FLAGS::WARNING_ICON );
  }
+ 
+@@ -873,23 +921,35 @@ const wxString EDA_DRAW_FRAME::GetZoomLevelIndicator() const
+ 
+ void EDA_DRAW_FRAME::LoadSettings( APP_SETTINGS_BASE* aCfg )
+ {
++    AMIGA_MARK( "drawls 922" );
+     EDA_BASE_FRAME::LoadSettings( aCfg );
++    AMIGA_MARK( "drawls 923" );
+ 
+     COMMON_SETTINGS* cmnCfg = Pgm().GetCommonSettings();
++    AMIGA_MARK( "drawls 925" );
+     WINDOW_SETTINGS* window = GetWindowSettings( aCfg );
++    AMIGA_MARK( "drawls 926" );
+ 
+     // Read units used in dialogs and toolbars
+     SetUserUnits( static_cast<EDA_UNITS>( aCfg->m_System.units ) );
++    AMIGA_MARK( "drawls 929" );
+ 
+     m_undoRedoCountMax = aCfg->m_System.max_undo_items;
++    AMIGA_MARK( "drawls 931" );
+ 
+     m_galDisplayOptions.ReadConfig( *cmnCfg, *window, this );
++    AMIGA_MARK( "drawls 933" );
+ 
+     m_findReplaceData->findString = aCfg->m_FindReplace.find_string;
++    AMIGA_MARK( "drawls 935" );
+     m_findReplaceData->replaceString = aCfg->m_FindReplace.replace_string;
++    AMIGA_MARK( "drawls 936" );
+     m_findReplaceData->matchMode = static_cast<EDA_SEARCH_MATCH_MODE>( aCfg->m_FindReplace.match_mode );
++    AMIGA_MARK( "drawls 937" );
+     m_findReplaceData->matchCase = aCfg->m_FindReplace.match_case;
++    AMIGA_MARK( "drawls 938" );
+     m_findReplaceData->searchAndReplace = aCfg->m_FindReplace.search_and_replace;
++    AMIGA_MARK( "drawls 939" );
+ 
+     for( const wxString& s : aCfg->m_FindReplace.find_history )
+         m_findStringHistoryList.Add( s );
+@@ -898,6 +958,7 @@ void EDA_DRAW_FRAME::LoadSettings( APP_SETTINGS_BASE* aCfg )
+         m_replaceStringHistoryList.Add( s );
+ 
+     m_lastToolbarIconSize = cmnCfg->m_Appearance.toolbar_icon_size;
++    AMIGA_MARK( "drawls 947" );
+ }
+ 
  
 diff --git a/common/gal/CMakeLists.txt b/common/gal/CMakeLists.txt
 index 19537f46..1bc1b2c3 100644
@@ -2392,10 +2549,10 @@ index f287e536..04624b50 100644
      ${PL_EDITOR_SRCS}
      ${DIALOGS_SRCS}
 diff --git a/pagelayout_editor/pl_editor_frame.cpp b/pagelayout_editor/pl_editor_frame.cpp
-index 351eec1c..94ffb0b5 100644
+index 351eec1c..f8063536 100644
 --- a/pagelayout_editor/pl_editor_frame.cpp
 +++ b/pagelayout_editor/pl_editor_frame.cpp
-@@ -71,6 +71,13 @@
+@@ -71,6 +71,14 @@
  #include <spacenav/spnav_2d_plugin.h>
  #else
  #include <navlib/nl_pl_editor_plugin.h>
@@ -2406,10 +2563,11 @@ index 351eec1c..94ffb0b5 100644
 +#define AMIGA_MARK( x )
 +#endif
 +
++
  #endif
  
  
-@@ -99,54 +106,86 @@ PL_EDITOR_FRAME::PL_EDITOR_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
+@@ -99,54 +107,86 @@ PL_EDITOR_FRAME::PL_EDITOR_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
          m_originSelectBox( nullptr ), m_originSelectChoice( 0 ), m_pageSelectBox( nullptr ),
          m_mruImagePath( wxEmptyString )
  {
@@ -2496,7 +2654,7 @@ index 351eec1c..94ffb0b5 100644
  
      int dims[] = {
  
-@@ -177,14 +216,18 @@ PL_EDITOR_FRAME::PL_EDITOR_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
+@@ -177,14 +217,18 @@ PL_EDITOR_FRAME::PL_EDITOR_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
          // constraint mode
          KIUI::GetTextSize( _( "Constrain to H, V, 45" ), stsbar ).x + spacer
      };
@@ -2515,7 +2673,7 @@ index 351eec1c..94ffb0b5 100644
  
      // Rows; layers 4 - 6
      m_auimgr.AddPane( m_tbTopMain, EDA_PANE().HToolbar().Name( "TopMainToolbar" )
-@@ -209,27 +252,38 @@ PL_EDITOR_FRAME::PL_EDITOR_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
+@@ -209,27 +253,38 @@ PL_EDITOR_FRAME::PL_EDITOR_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
                        .Center() );
  
      FinishAUIInitialization();
@@ -2554,6 +2712,41 @@ index 351eec1c..94ffb0b5 100644
  
      // Register a call to update the toolbar sizes. It can't be done immediately because
      // it seems to require some sizes calculated that aren't yet (at least on GTK).
+@@ -531,22 +586,34 @@ const BOX2I PL_EDITOR_FRAME::GetDocumentExtents( bool aIncludeAllVisible ) const
+ 
+ void PL_EDITOR_FRAME::LoadSettings( APP_SETTINGS_BASE* aCfg )
+ {
++    AMIGA_MARK( "plls 587" );
+     EDA_DRAW_FRAME::LoadSettings( aCfg );
++    AMIGA_MARK( "plls 588" );
+ 
+     PL_EDITOR_SETTINGS* cfg = dynamic_cast<PL_EDITOR_SETTINGS*>( aCfg );
++    AMIGA_MARK( "plls 590" );
+     wxCHECK( cfg, /*void*/ );
++    AMIGA_MARK( "plls 591" );
+ 
+     m_propertiesFrameWidth = cfg->m_PropertiesFrameWidth;
++    AMIGA_MARK( "plls 593" );
+     m_originSelectChoice = cfg->m_CornerOrigin;
++    AMIGA_MARK( "plls 594" );
+ 
+     SetDrawBgColor( cfg->m_BlackBackground ? BLACK : WHITE );
++    AMIGA_MARK( "plls 596" );
+ 
+     PAGE_INFO::SetCustomWidthMils( cfg->m_LastCustomWidth );
++    AMIGA_MARK( "plls 598" );
+     PAGE_INFO::SetCustomHeightMils( cfg->m_LastCustomHeight );
++    AMIGA_MARK( "plls 599" );
+ 
+     PAGE_INFO pageInfo = GetPageSettings();
++    AMIGA_MARK( "plls 601" );
+     pageInfo.SetType( cfg->m_LastPaperSize, cfg->m_LastWasPortrait );
++    AMIGA_MARK( "plls 602" );
+     SetPageSettings( pageInfo );
++    AMIGA_MARK( "plls 603" );
+ }
+ 
+ 
 diff --git a/pcb_calculator/CMakeLists.txt b/pcb_calculator/CMakeLists.txt
 index 915e4d70..cc966183 100644
 --- a/pcb_calculator/CMakeLists.txt
