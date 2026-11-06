@@ -1742,7 +1742,7 @@ index ec1662bb..5804ac99 100644
      if( hasVisibleGlyph && !run.m_bytes.empty() )
          aRuns->push_back( std::move( run ) );
 diff --git a/common/single_top.cpp b/common/single_top.cpp
-index 47e07280..1581d120 100644
+index 47e07280..b3769954 100644
 --- a/common/single_top.cpp
 +++ b/common/single_top.cpp
 @@ -34,7 +34,13 @@
@@ -1896,11 +1896,24 @@ index 47e07280..1581d120 100644
  
  
      if( const COMMON_SETTINGS* cfg = Pgm().GetCommonSettings() )
-@@ -412,15 +466,19 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+@@ -412,15 +466,32 @@ bool PGM_SINGLE_TOP::OnPgmInit()
              KIPLATFORM::APP::EnableDarkMode( false );
      }
  
 +    AMIGA_STEP( "top theme done" );
++
++#if defined( KICAD_AMIGA ) && !defined( BUILD_KIWAY_DLL )
++    // The kiface is linked in, so KIWAY::KiFACE() never loads it and never
++    // gives it its OnKifaceStart(): without that the editor has no settings
++    // (config() is null). Start it here, where loading it would have.
++    if( !kiface->OnKifaceStart( this, KFCTL_STANDALONE, &Kiway ) )
++    {
++        OnPgmExit();
++        return false;
++    }
++
++    AMIGA_STEP( "top kiface started" );
++#endif
 +
  #ifdef KICAD_IPC_API
      // Create the API server thread once the app event loop exists
@@ -1916,7 +1929,7 @@ index 47e07280..1581d120 100644
  
      if( frame == nullptr )
      {
-@@ -430,30 +488,42 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+@@ -430,30 +501,42 @@ bool PGM_SINGLE_TOP::OnPgmInit()
      }
  
      Kiway.SetTop( frame );
@@ -1959,7 +1972,7 @@ index 47e07280..1581d120 100644
  
  
      static const wxCmdLineEntryDesc desc[] = {
-@@ -463,8 +533,11 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+@@ -463,8 +546,11 @@ bool PGM_SINGLE_TOP::OnPgmInit()
      };
  
      wxCmdLineParser parser( App().argc, App().argv );
@@ -1971,7 +1984,7 @@ index 47e07280..1581d120 100644
  
      if( parser.GetParamCount() )
      {
-@@ -505,9 +578,11 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+@@ -505,9 +591,11 @@ bool PGM_SINGLE_TOP::OnPgmInit()
          topFrame->PreloadLibraries( &Kiway );
  
      PreloadDesignBlockLibraries( &Kiway );
