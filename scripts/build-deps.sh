@@ -29,6 +29,8 @@ cp "$HERE"/compat/include/*.h "$DEPS/include/"
 mkdir -p "$WORK/obj/compat"
 $CC $OPT -include "$HERE/compat/include/gfamiga_prefix.h" -c -o "$WORK/obj/compat/gfamiga_posix.o" "$HERE/compat/src/gfamiga_posix.c"
 rm -f "$DEPS/lib/libgfamiga_compat.a"; $AR rcs "$DEPS/lib/libgfamiga_compat.a" "$WORK/obj/compat/gfamiga_posix.o"
+# /dev/urandom for std::random_device: linked as an object with --wrap=open,read,close
+$CC $OPT -c -o "$DEPS/lib/gfamiga_random.o" "$HERE/compat/src/gfamiga_random.c"
 
 fetch() { # name url sha256 -> $DL/<file>
     f="$DL/$(basename "$2")"

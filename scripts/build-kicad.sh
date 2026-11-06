@@ -51,16 +51,18 @@ if [ ! -x "$HOST/bin/lemon" ] || [ "$SRC/thirdparty/lemon/lemon.c" -nt "$HOST/bi
 fi
 
 B="$WORK/kicad-build"
-# configured again when the tree it was configured from moves
+# configured again when the tree it was configured from moves, or this
+# script (its configure line) changes
+HERE_STAMP="$HERE $(sha256sum "$0" | cut -d' ' -f1)"
 if [ ! -f "$B/build.ninja" ] || [ "${RECONFIGURE:-0}" = 1 ] \
-   || [ "$(cat "$B/.gfamiga-here" 2>/dev/null || true)" != "$HERE" ]; then
+   || [ "$(cat "$B/.gfamiga-here" 2>/dev/null || true)" != "$HERE_STAMP" ]; then
     cmake -S "$SRC" -B "$B" -G Ninja \
         -DCMAKE_TOOLCHAIN_FILE="$HERE/cmake/m68k-amigaos.cmake" \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_CXX_FLAGS_RELEASE="-O2 -DNDEBUG" -DCMAKE_C_FLAGS_RELEASE="-O2 -DNDEBUG" \
         -DCMAKE_PREFIX_PATH="/" \
         -DwxWidgets_CONFIG_EXECUTABLE="$WXSDK/bin/wx-config" \
-        -DKC_EXTRA_LIBS="-Wl,--start-group -L$CURL/lib -lcurl -lnghttp2 -L$DEPS/lib -lz -lgfamiga_compat -Wl,--end-group" -DZLIB_INCLUDE_DIR="$DEPS/include" -DZLIB_LIBRARY="$DEPS/lib/libz.a" -DCURL_INCLUDE_DIR="$CURL/include" -DCURL_LIBRARY="$CURL/lib/libcurl.a" -DKICAD_AMIGA=ON -DKICAD_AMIGA_SDK_INCLUDE="$WORK/src/opensdk/Include" -DKICAD_WAYLAND=OFF -DKICAD_HOST_LEMON="$HOST/bin/lemon" \
+        -DKC_EXTRA_LIBS="-Wl,--wrap=open -Wl,--wrap=read -Wl,--wrap=close $DEPS/lib/gfamiga_random.o -Wl,--start-group -L$CURL/lib -lcurl -lnghttp2 -L$DEPS/lib -lz -lgfamiga_compat -Wl,--end-group" -DZLIB_INCLUDE_DIR="$DEPS/include" -DZLIB_LIBRARY="$DEPS/lib/libz.a" -DCURL_INCLUDE_DIR="$CURL/include" -DCURL_LIBRARY="$CURL/lib/libcurl.a" -DKICAD_AMIGA=ON -DKICAD_AMIGA_SDK_INCLUDE="$WORK/src/opensdk/Include" -DKICAD_WAYLAND=OFF -DKICAD_HOST_LEMON="$HOST/bin/lemon" \
         -DKICAD_SCRIPTING_WXPYTHON=OFF -DKICAD_IPC_API=OFF -DKICAD_BUILD_QA_TESTS=OFF \
         -DKICAD_BUILD_I18N=OFF -DKICAD_SPICE_QA=OFF -DKICAD_USE_SENTRY=OFF -DKICAD_UPDATE_CHECK=OFF \
         -DKICAD_USE_PCH=OFF -DKICAD_INSTALL_DEMOS=OFF -DKICAD_SIGNAL_INTEGRITY=OFF \
@@ -74,6 +76,6 @@ if [ ! -f "$B/build.ninja" ] || [ "${RECONFIGURE:-0}" = 1 ] \
         -DLIBGIT2_INCLUDE_DIR="$DEPS/include" -DLIBGIT2_LIBRARY="$DEPS/lib/libgit2.a;$DEPS/lib/libgfamiga_compat.a" \
         -DCMAKE_INSTALL_PREFIX="$WORK/kicad-install" \
         > "$WORK/kicad-configure.log" 2>&1 || { tail -40 "$WORK/kicad-configure.log"; exit 1; }
-    echo "$HERE" > "$B/.gfamiga-here"
+    echo "$HERE_STAMP" > "$B/.gfamiga-here"
 fi
 cmake --build "$B" -j"$JOBS" -- -k 0 "$@"

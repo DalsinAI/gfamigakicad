@@ -306,6 +306,180 @@ index 0144ac4f..e8569968 100644
      # On Windows/MacOS, the SpaceMouse support is provided by the navlib subdirectory
      message( STATUS "Including 3Dconnexion SpaceMouse navigation support in pcbcommon" )
      add_subdirectory( ../pcbnew/navlib ./navlib)
+diff --git a/common/asset_archive.cpp b/common/asset_archive.cpp
+index cc2a7c8f..7b940c30 100644
+--- a/common/asset_archive.cpp
++++ b/common/asset_archive.cpp
+@@ -17,6 +17,10 @@
+  * with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
++#include <algorithm>
++#include <cstring>
++#include <string>
++
+ #include <wx/tarstrm.h>
+ #include <wx/wfstream.h>
+ #include <wx/zstream.h>
+@@ -24,6 +28,7 @@
+ #include <asset_archive.h>
+ 
+ 
++
+ ASSET_ARCHIVE::ASSET_ARCHIVE( const wxString& aFilePath, bool aLoadNow ) :
+         m_filePath( aFilePath )
+ {
+@@ -44,6 +49,14 @@ bool ASSET_ARCHIVE::Load()
+         return false;
+ 
+     wxZlibInputStream stream( zipFile, wxZLIB_GZIP );
++
++#ifdef KICAD_AMIGA
++    // Read the tar here: wxTarInputStream makes a wxTarEntry per file, and
++    // the first one asks the C library for the user's group, which waits for
++    // ever on AmigaOS when no user database is running. The archive is plain
++    // ustar/GNU tar: 512-byte headers, octal sizes, data padded to 512.
++    return loadAmigaTar( stream, zipFile.GetLength() );
++#else
+     wxTarInputStream tarStream( stream );
+     wxTarEntry* entry;
+ 
+@@ -54,6 +67,7 @@ bool ASSET_ARCHIVE::Load()
+ 
+     while( ( entry = tarStream.GetNextEntry() ) != nullptr )
+     {
++
+         if( entry->IsDir() )
+         {
+             delete entry;
+@@ -80,8 +94,127 @@ bool ASSET_ARCHIVE::Load()
+ 
+     m_cache.resize( offset );
+ 
++    return true;
++#endif
++}
++
++
++#ifdef KICAD_AMIGA
++static size_t amigaTarOctal( const char* aField, int aLen )
++{
++    size_t value = 0;
++
++    for( int i = 0; i < aLen && aField[i]; i++ )
++    {
++        if( aField[i] >= '0' && aField[i] <= '7' )
++            value = value * 8 + ( aField[i] - '0' );
++        else if( aField[i] != ' ' )
++            break;
++    }
++
++    return value;
++}
++
++
++bool ASSET_ARCHIVE::loadAmigaTar( wxInputStream& aStream, wxFileOffset aPackedLength )
++{
++    m_cache.resize( 2 * aPackedLength );
++
++    size_t      offset = 0;
++    std::string longName;
++    char        hdr[512];
++
++    auto readFully = [&]( void* aDest, size_t aLen ) -> bool
++    {
++        aStream.Read( aDest, aLen );
++        return aStream.LastRead() == aLen;
++    };
++
++    auto skip = [&]( size_t aLen ) -> bool
++    {
++        char buf[512];
++
++        while( aLen > 0 )
++        {
++            size_t n = std::min( aLen, sizeof( buf ) );
++
++            if( !readFully( buf, n ) )
++                return false;
++
++            aLen -= n;
++        }
++
++        return true;
++    };
++
++    while( readFully( hdr, sizeof( hdr ) ) )
++    {
++        if( hdr[0] == 0 )
++            break;  // the all-zero end blocks
++
++        size_t length = amigaTarOctal( hdr + 124, 12 );
++        size_t padded = ( length + 511 ) & ~(size_t) 511;
++        char   type = hdr[156];
++
++        if( type == 'L' )  // GNU long name: the next entry's name is the data
++        {
++            longName.assign( length, 0 );
++
++            if( !readFully( &longName[0], length ) || !skip( padded - length ) )
++                return false;
++
++            longName.resize( strnlen( longName.c_str(), length ) );
++            continue;
++        }
++
++        if( type != '0' && type != 0 )  // directories, links, pax records
++        {
++            if( !skip( padded ) )
++                return false;
++
++            longName.clear();
++            continue;
++        }
++
++        std::string name;
++
++        if( !longName.empty() )
++        {
++            name = longName;
++        }
++        else
++        {
++            std::string prefix( hdr + 345, strnlen( hdr + 345, 155 ) );
++            name.assign( hdr, strnlen( hdr, 100 ) );
++
++            if( memcmp( hdr + 257, "ustar\0", 6 ) == 0 && !prefix.empty() )
++                name = prefix + "/" + name;
++        }
++
++        longName.clear();
++
++        while( name.compare( 0, 2, "./" ) == 0 )
++            name.erase( 0, 2 );
++
++        if( offset + length > m_cache.size() )
++            m_cache.resize( std::max( m_cache.size() * 2, offset + length ) );
++
++        if( !readFully( &m_cache[offset], length ) || !skip( padded - length ) )
++            return false;
++
++        FILE_INFO fi;
++        fi.offset = offset;
++        fi.length = length;
++        m_fileInfoCache[wxString::FromUTF8( name.c_str() )] = fi;
++
++        offset += length;
++    }
++
++    m_cache.resize( offset );
++
+     return true;
+ }
++#endif
+ 
+ 
+ long ASSET_ARCHIVE::GetFileContents( const wxString& aFilePath, const unsigned char* aDest,
 diff --git a/common/bitmap_base.cpp b/common/bitmap_base.cpp
 index f1d84d4e..5e7e3576 100644
 --- a/common/bitmap_base.cpp
@@ -497,6 +671,34 @@ index 39e976b9..be106671 100644
      // Install a temporary SIGABRT handler to recover from abort() calls triggered by
      // buggy 3Dconnexion drivers. The driver on some macOS versions calls std::terminate()
      // from a noexcept context inside NlCreate, which calls abort(). By catching SIGABRT
+diff --git a/common/paths.cpp b/common/paths.cpp
+index 8b7a93d6..3012bedf 100644
+--- a/common/paths.cpp
++++ b/common/paths.cpp
+@@ -259,6 +259,9 @@ wxString PATHS::GetStockDataPath( bool aRespectRunFromBuildDir )
+         path = GetOSXKicadDataDir();
+ #elif defined( __WXMSW__ )
+         path = getWindowsKiCadRoot() + wxT( "share/kicad" );
++#elif defined( KICAD_AMIGA )
++        // beside the program: share/kicad in the drawer it was started from
++        path = wxT( "PROGDIR:share/kicad" );
+ #else
+         path = wxString::FromUTF8Unchecked( KICAD_DATA );
+ #endif
+@@ -289,8 +292,13 @@ wxString PATHS::GetStockEDALibraryPath()
+ #else
+     if( wxGetEnv( wxT( "APPDIR" ), &path ) )
+         path += wxT( "/share/kicad" );
++#ifdef KICAD_AMIGA
++    else
++        path = wxT( "PROGDIR:share/kicad" );
++#else
+     else
+         path = wxString::FromUTF8Unchecked( KICAD_LIBRARY_DATA );
++#endif
+ #endif
+ 
+     return path;
 diff --git a/common/plotters/PDF_plotter.cpp b/common/plotters/PDF_plotter.cpp
 index 4bd648e3..9691cb80 100644
 --- a/common/plotters/PDF_plotter.cpp
@@ -741,7 +943,7 @@ index ec1662bb..5804ac99 100644
      if( hasVisibleGlyph && !run.m_bytes.empty() )
          aRuns->push_back( std::move( run ) );
 diff --git a/common/single_top.cpp b/common/single_top.cpp
-index 47e07280..4b36202a 100644
+index 47e07280..88c477c8 100644
 --- a/common/single_top.cpp
 +++ b/common/single_top.cpp
 @@ -34,7 +34,13 @@
@@ -758,6 +960,24 @@ index 47e07280..4b36202a 100644
  #include <wx/cmdline.h>
  #include <wx/dialog.h>
  #include <wx/filename.h>
+@@ -412,6 +418,17 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+             KIPLATFORM::APP::EnableDarkMode( false );
+     }
+ 
++#if defined( KICAD_AMIGA ) && !defined( BUILD_KIWAY_DLL )
++    // The kiface is linked in, so KIWAY::KiFACE() never loads it and never
++    // gives it its OnKifaceStart(): without that the editor has no settings
++    // (config() is null). Start it here, where loading it would have.
++    if( !kiface->OnKifaceStart( this, KFCTL_STANDALONE, &Kiway ) )
++    {
++        OnPgmExit();
++        return false;
++    }
++#endif
++
+ #ifdef KICAD_IPC_API
+     // Create the API server thread once the app event loop exists
+     m_api_server = std::make_unique<KICAD_API_SERVER>();
 diff --git a/common/singleton.cpp b/common/singleton.cpp
 index df61f3ca..1d58e28f 100644
 --- a/common/singleton.cpp
@@ -876,6 +1096,30 @@ index aa7c32eb..fb5f0bb7 100644
  
  set_target_properties( gerbview_kiface PROPERTIES
      OUTPUT_NAME     gerbview
+diff --git a/include/asset_archive.h b/include/asset_archive.h
+index ca2ae06b..96d42773 100644
+--- a/include/asset_archive.h
++++ b/include/asset_archive.h
+@@ -33,6 +33,8 @@
+  * The entire contents of the archive will be uncompressed and kept resident in memory in the
+  * current implementation, so consider this before reusing this as-is for new use cases.
+  */
++class wxInputStream;
++
+ class KICOMMON_API ASSET_ARCHIVE
+ {
+ public:
+@@ -60,6 +62,10 @@ public:
+     long GetFilePointer( const wxString& aFilePath, const unsigned char** aDest );
+ 
+ private:
++#ifdef KICAD_AMIGA
++    bool loadAmigaTar( wxInputStream& aStream, wxFileOffset aPackedLength );
++#endif
++
+     struct FILE_INFO
+     {
+         size_t offset;
 diff --git a/include/font/fontconfig.h b/include/font/fontconfig.h
 index d434d8d5..00766124 100644
 --- a/include/font/fontconfig.h

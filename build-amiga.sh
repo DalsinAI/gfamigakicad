@@ -29,7 +29,9 @@ LIMIT=${LIMIT:-840}   # seconds this run may take (the stove allows 900)
 # the upstream tarballs kept on the dev machine, used before downloading
 UPSTREAM_TARBALLS=${UPSTREAM_TARBALLS:-/run/media/da1ek/WorkingSpace/AmigaChrome/team4/salvor-offload-20261012/dev/upstream-tarballs}
 TC="$STOVE/prefix"
-mkdir -p "$WORK" "$OUT"
+mkdir -p "$WORK" "$OUT" "$WORK/tmp"
+# the compiler's temporary files go in WORK, not the shared /tmp
+export TMPDIR="$WORK/tmp"
 export UPSTREAM_TARBALLS JOBS
 left() { echo $((LIMIT - ($(date +%s) - START))); }
 step() { echo "kicad-amiga: $* ($(( $(date +%s) - START )) s)"; }
@@ -102,5 +104,24 @@ for p in kicad/kicad kicad/kicad-cli eeschema/eeschema pcbnew/pcbnew gerbview/ge
          pagelayout_editor/pl_editor bitmap2component/bitmap2component pcb_calculator/pcb_calculator; do
     [ -f "$B/$p" ] && cp "$B/$p" "$OUT/"
 done
+# the zlib check (tests/ztest.c) against the same libz.a KiCad links
+"$TC/bin/m68k-amigaos-gcc" -O2 -m68040 -noixemul -I"$HERE/compat/include" -o "$OUT/ztest" \
+    "$HERE/tests/ztest.c" -L"$WORK/deps/lib" -lz || echo "kicad-amiga: ztest did not build"
+# the threading check (tests/pooltest.cpp) with KiCad's own flags and pool
+"$TC/bin/m68k-amigaos-g++" -std=c++20 -O2 -m68040 -noixemul -pthread -ffloat-store \
+    -DBS_THREAD_POOL_NATIVE_EXTENSIONS=1 -include "$HERE/compat/include/gfamiga_prefix.h" \
+    -I"$HERE/compat/include" -I"$WORK/kicad-src/thirdparty/thread-pool" -o "$OUT/pooltest" \
+    "$HERE/tests/pooltest.cpp" -L"$WORK/deps/lib" -lgfamiga_compat -latomic \
+    || echo "kicad-amiga: pooltest did not build"
+# the random device check (tests/rdtest.cpp), linked the way the programs are
+"$TC/bin/m68k-amigaos-g++" -O2 -m68040 -noixemul -o "$OUT/rdtest" "$HERE/tests/rdtest.cpp" \
+    -Wl,--wrap=open -Wl,--wrap=read -Wl,--wrap=close "$WORK/deps/lib/gfamiga_random.o" -lpthread \
+    || echo "kicad-amiga: rdtest did not build"
+# what the programs read from PROGDIR:share/kicad: the toolbar and menu
+# images, the settings schemas and the new project template
+S="$OUT/share/kicad"; rm -rf "$S"; mkdir -p "$S/resources" "$S/schemas" "$S/template"
+cp "$B/resources/images.tar.gz" "$S/resources/"
+cp "$B"/schemas/*.json "$S/schemas/"
+cp "$WORK/kicad-src/resources/project_template/kicad.kicad_pro" "$S/template/"
 TC="$TC" BIN="$OUT" VERSION="$KICAD_RELEASE" OUT="$OUT" sh "$HERE/scripts/package.sh"
 step "done"
