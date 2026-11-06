@@ -223,7 +223,7 @@ index 8daf035a..3bc70266 100644
          set( KICAD_BUILD_ARCH_ARM64 1 )
      elseif( CMAKE_SYSTEM_PROCESSOR MATCHES "arm|ARM" )
 diff --git a/common/CMakeLists.txt b/common/CMakeLists.txt
-index 0144ac4f..cd07fc44 100644
+index 0144ac4f..e8569968 100644
 --- a/common/CMakeLists.txt
 +++ b/common/CMakeLists.txt
 @@ -90,8 +90,9 @@ install( FILES
@@ -297,6 +297,15 @@ index 0144ac4f..cd07fc44 100644
  
  set( PCB_COMMON_SRCS
      hash_eda.cpp
+@@ -1109,7 +1114,7 @@ target_link_libraries( pcbcommon PUBLIC
+     zint
+ )
+ 
+-if( APPLE OR NOT UNIX )
++if( APPLE OR NOT UNIX OR KICAD_AMIGA )
+     # On Windows/MacOS, the SpaceMouse support is provided by the navlib subdirectory
+     message( STATUS "Including 3Dconnexion SpaceMouse navigation support in pcbcommon" )
+     add_subdirectory( ../pcbnew/navlib ./navlib)
 diff --git a/common/bitmap_base.cpp b/common/bitmap_base.cpp
 index f1d84d4e..5e7e3576 100644
 --- a/common/bitmap_base.cpp
@@ -772,6 +781,22 @@ index df61f3ca..1d58e28f 100644
  
      m_GLContextManager = new GL_CONTEXT_MANAGER();
  }
+diff --git a/common/widgets/grid_checkbox.cpp b/common/widgets/grid_checkbox.cpp
+index 9478e2db..fe1c4116 100644
+--- a/common/widgets/grid_checkbox.cpp
++++ b/common/widgets/grid_checkbox.cpp
+@@ -36,6 +36,11 @@
+ // the space between the cell edge and the checkbox mark
+ const int GRID_CELL_CHECKBOX_MARGIN = 2;
+ 
++#ifdef KICAD_AMIGA
++// the GFOpenWX Toolkit exports its own; keep KiCad's copy apart
++#define wxGetContentRect kicad_wxGetContentRect
++#endif
++
+ wxRect
+ wxGetContentRect(wxSize contentSize,
+                  const wxRect& cellRect,
 diff --git a/common/widgets/wx_aui_art_providers.cpp b/common/widgets/wx_aui_art_providers.cpp
 index c23c3b13..88d46f45 100644
 --- a/common/widgets/wx_aui_art_providers.cpp
@@ -1185,7 +1210,7 @@ index 915e4d70..cc966183 100644
      ${PCB_CALCULATOR_SRCS}
      )
 diff --git a/pcbnew/CMakeLists.txt b/pcbnew/CMakeLists.txt
-index 276772bb..92da552d 100644
+index 276772bb..3bf0ec11 100644
 --- a/pcbnew/CMakeLists.txt
 +++ b/pcbnew/CMakeLists.txt
 @@ -279,6 +279,12 @@ set( PCBNEW_EXPORTERS
@@ -1201,13 +1226,15 @@ index 276772bb..92da552d 100644
  set( PCBNEW_MICROWAVE_SRCS
      microwave/microwave_footprint.cpp
      microwave/microwave_inductor.cpp
-@@ -548,8 +554,13 @@ if( CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
+@@ -548,8 +554,15 @@ if( CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
      endif()
  endif()
  
 +if( KICAD_AMIGA )
 +    # no Python on AmigaOS yet: no SWIG wrapper, action plugins or wizards
-+    set( PCBNEW_SCRIPTING_PYTHON_HELPERS "" )
++    set( PCBNEW_SCRIPTING_PYTHON_HELPERS
++        python/scripting/pcbnew_scripting_helpers.cpp
++        ${CMAKE_SOURCE_DIR}/amiga/pcbnew/scripting_none.cpp )
 +endif()
 +
  set( PCBNEW_SCRIPTING_SRCS
@@ -1216,7 +1243,7 @@ index 276772bb..92da552d 100644
      ${PCBNEW_SCRIPTING_PYTHON_HELPERS}
      )
  
-@@ -615,7 +626,7 @@ add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/pcb
+@@ -615,7 +628,7 @@ add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/pcb
      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
      )
  
@@ -1225,7 +1252,7 @@ index 276772bb..92da552d 100644
      list( APPEND PCBNEW_EXTRA_LIBS rt )
  endif()
  
-@@ -852,7 +863,7 @@ target_link_libraries( pcbnew_kiface_objects
+@@ -852,7 +865,7 @@ target_link_libraries( pcbnew_kiface_objects
          ${OCC_LIBRARIES}
      )
  
@@ -1248,6 +1275,22 @@ index 76830a09..223d99d1 100644
  
  #include <wx/debug.h>
  #include <wx/msgdlg.h>
+diff --git a/pcbnew/pcbnew.cpp b/pcbnew/pcbnew.cpp
+index 81ad2eec..0a19f34d 100644
+--- a/pcbnew/pcbnew.cpp
++++ b/pcbnew/pcbnew.cpp
+@@ -546,7 +546,11 @@ static struct IFACE : public KIFACE_BASE, public UNITS_PROVIDER
+         }
+ 
+         case KIFACE_SCRIPTING_LEGACY:
++#ifdef KICAD_AMIGA
++            return nullptr; // no Python on AmigaOS yet
++#else
+             return reinterpret_cast<void*>( PyInit__pcbnew );
++#endif
+ 
+         default:
+             return nullptr;
 diff --git a/pcbnew/pcbnew_settings.cpp b/pcbnew/pcbnew_settings.cpp
 index 1a812adb..fc410311 100644
 --- a/pcbnew/pcbnew_settings.cpp
@@ -1262,6 +1305,20 @@ index 1a812adb..fc410311 100644
  
  #include <common.h>
  #include <settings/color_settings.h>
+diff --git a/pcbnew/python/scripting/pcbnew_scripting_helpers.cpp b/pcbnew/python/scripting/pcbnew_scripting_helpers.cpp
+index c7912eec..9b487358 100644
+--- a/pcbnew/python/scripting/pcbnew_scripting_helpers.cpp
++++ b/pcbnew/python/scripting/pcbnew_scripting_helpers.cpp
+@@ -27,7 +27,9 @@
+  * @brief Scripting helper functions for pcbnew functionality
+  */
+ 
++#ifndef KICAD_AMIGA
+ #include <Python.h>
++#endif
+ #undef HAVE_CLOCK_GETTIME  // macro is defined in Python.h and causes redefine warning
+ 
+ #include "pcbnew_scripting_helpers.h"
 diff --git a/plugins/CMakeLists.txt b/plugins/CMakeLists.txt
 index 9f8782aa..be4f994d 100644
 --- a/plugins/CMakeLists.txt

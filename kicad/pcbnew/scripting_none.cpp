@@ -1,0 +1,67 @@
+/* pcbnew without Python (AmigaOS has none yet): the scripting tool, the
+ * action plugin menus and the script lists are there and empty. The board
+ * helpers (LoadBoard, SaveBoard, CreateEmptyBoard) are upstream's own,
+ * built without Python.h.
+ *
+ * Copyright (c) 2026 AmiCradle Team. GPL-3.0-or-later, as KiCad. */
+#include <pcb_edit_frame.h>
+#include <pcbnew_settings.h>
+#include <settings/settings_manager.h>
+#include <tool/action_menu.h>
+#include <tool/action_toolbar.h>
+#include <tools/pcb_actions.h>
+#include <confirm.h>
+#include "pcb_scripting_tool.h"
+#include "pcbnew_scripting.h"
+
+SCRIPTING_TOOL::SCRIPTING_TOOL() : PCB_TOOL_BASE( "pcbnew.ScriptingTool" ) {}
+SCRIPTING_TOOL::~SCRIPTING_TOOL() {}
+void SCRIPTING_TOOL::Reset( RESET_REASON aReason ) {}
+bool SCRIPTING_TOOL::Init() { return true; }
+void SCRIPTING_TOOL::ReloadPlugins() {}
+void SCRIPTING_TOOL::callLoadPlugins() {}
+
+void SCRIPTING_TOOL::ShowPluginFolder()
+{
+    DisplayInfoMessage( nullptr, _( "Python plugins are not available on AmigaOS yet." ) );
+}
+
+int SCRIPTING_TOOL::reloadPlugins( const TOOL_EVENT& aEvent ) { return 0; }
+
+int SCRIPTING_TOOL::showPluginFolder( const TOOL_EVENT& aEvent )
+{
+    ShowPluginFolder();
+    return 0;
+}
+
+void SCRIPTING_TOOL::setTransitions()
+{
+    Go( &SCRIPTING_TOOL::reloadPlugins, ACTIONS::pluginsReload.MakeEvent() );
+    Go( &SCRIPTING_TOOL::showPluginFolder, PCB_ACTIONS::pluginsShowFolder.MakeEvent() );
+}
+
+void pcbnewGetUnloadableScriptNames( wxString& aNames ) { aNames.clear(); }
+void pcbnewGetScriptsSearchPaths( wxString& aNames ) { aNames.clear(); }
+void pcbnewGetWizardsBackTrace( wxString& aNames ) { aNames.clear(); }
+
+void PCB_EDIT_FRAME::buildActionPluginMenus( ACTION_MENU* aActionMenu ) {}
+void PCB_EDIT_FRAME::addActionPluginTools( ACTION_TOOLBAR* aToolbar ) {}
+
+std::vector<LEGACY_OR_API_PLUGIN> PCB_EDIT_FRAME::GetOrderedActionPlugins()
+{
+    return {};
+}
+
+bool PCB_EDIT_FRAME::GetActionPluginButtonVisible( const wxString& aPluginPath, bool aPluginDefault )
+{
+    if( PCBNEW_SETTINGS* cfg = GetAppSettings<PCBNEW_SETTINGS>( "pcbnew" ) )
+    {
+        for( const auto& [path, visible] : cfg->m_VisibleActionPlugins )
+        {
+            if( path == aPluginPath )
+                return visible;
+        }
+    }
+
+    return aPluginDefault;
+}
