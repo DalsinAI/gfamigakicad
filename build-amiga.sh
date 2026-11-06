@@ -29,7 +29,9 @@ LIMIT=${LIMIT:-840}   # seconds this run may take (the stove allows 900)
 # the upstream tarballs kept on the dev machine, used before downloading
 UPSTREAM_TARBALLS=${UPSTREAM_TARBALLS:-/run/media/da1ek/WorkingSpace/AmigaChrome/team4/salvor-offload-20261012/dev/upstream-tarballs}
 TC="$STOVE/prefix"
-mkdir -p "$WORK" "$OUT"
+mkdir -p "$WORK" "$OUT" "$WORK/tmp"
+# the compiler's temporary files go in WORK, not the shared /tmp
+export TMPDIR="$WORK/tmp"
 export UPSTREAM_TARBALLS JOBS
 left() { echo $((LIMIT - ($(date +%s) - START))); }
 step() { echo "kicad-amiga: $* ($(( $(date +%s) - START )) s)"; }
