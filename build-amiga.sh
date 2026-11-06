@@ -123,5 +123,10 @@ S="$OUT/share/kicad"; rm -rf "$S"; mkdir -p "$S/resources" "$S/schemas" "$S/temp
 cp "$B/resources/images.tar.gz" "$S/resources/"
 cp "$B"/schemas/*.json "$S/schemas/"
 cp "$WORK/kicad-src/resources/project_template/kicad.kicad_pro" "$S/template/"
+# two of KiCad's demo boards to try it with: the ColdFire 5213 kit and the video board
+mkdir -p "$S/demos"
+tar xzf "${DL:-$WORK/dl}/kicad-$KICAD_VERSION.tar.gz" -C "$S/demos" --strip-components=2 \
+    --wildcards '*/demos/kit-dev-coldfire-xilinx_5213/*' '*/demos/video/*' \
+    || echo "kicad-amiga: demos not packed"
 TC="$TC" BIN="$OUT" VERSION="$KICAD_RELEASE" OUT="$OUT" sh "$HERE/scripts/package.sh"
 step "done"
