@@ -107,6 +107,12 @@ done
 # the zlib check (tests/ztest.c) against the same libz.a KiCad links
 "$TC/bin/m68k-amigaos-gcc" -O2 -m68040 -noixemul -I"$HERE/compat/include" -o "$OUT/ztest" \
     "$HERE/tests/ztest.c" -L"$WORK/deps/lib" -lz || echo "kicad-amiga: ztest did not build"
+# the threading check (tests/pooltest.cpp) with KiCad's own flags and pool
+"$TC/bin/m68k-amigaos-g++" -std=c++20 -O2 -m68040 -noixemul -pthread -ffloat-store \
+    -DBS_THREAD_POOL_NATIVE_EXTENSIONS=1 -include "$HERE/compat/include/gfamiga_prefix.h" \
+    -I"$HERE/compat/include" -I"$WORK/kicad-src/thirdparty/thread-pool" -o "$OUT/pooltest" \
+    "$HERE/tests/pooltest.cpp" -L"$WORK/deps/lib" -lgfamiga_compat -latomic \
+    || echo "kicad-amiga: pooltest did not build"
 # what the programs read from PROGDIR:share/kicad: the toolbar and menu
 # images, the settings schemas and the new project template
 S="$OUT/share/kicad"; rm -rf "$S"; mkdir -p "$S/resources" "$S/schemas" "$S/template"
