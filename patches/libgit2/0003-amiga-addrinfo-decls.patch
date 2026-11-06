@@ -1,0 +1,17 @@
+--- a/src/util/posix.h
++++ b/src/util/posix.h
+@@ -190,6 +190,14 @@
+ extern void p_freeaddrinfo(struct addrinfo *info);
+ extern const char *p_gai_strerror(int ret);
+ #else
++#	if defined(__amigaos__)
++/* libnix's libsocket.a has these, but OpenNDK's <netdb.h> does not declare them */
++struct addrinfo;
++extern int getaddrinfo(const char *node, const char *service,
++	const struct addrinfo *hints, struct addrinfo **res);
++extern void freeaddrinfo(struct addrinfo *res);
++extern const char *gai_strerror(int errcode);
++#	endif
+ #	define p_getaddrinfo(a, b, c, d) getaddrinfo(a, b, c, d)
+ #	define p_freeaddrinfo(a) freeaddrinfo(a)
+ #	define p_gai_strerror(c) gai_strerror(c)

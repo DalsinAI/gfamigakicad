@@ -1,0 +1,27 @@
+--- a/src/libgit2/sysdir.c
++++ b/src/libgit2/sysdir.c
+@@ -284,6 +284,16 @@
+ }
+ 
+ #ifndef GIT_WIN32
++#if defined(__amigaos__)
++/* AmigaOS has no password database: a program's own settings live in
++   PROGDIR:User, so that is git's home when HOME is not set. */
++static int get_passwd_home(git_str *out, uid_t uid)
++{
++	GIT_UNUSED(uid);
++	GIT_ASSERT_ARG(out);
++	return git_str_puts(out, "PROGDIR:User");
++}
++#else
+ static int get_passwd_home(git_str *out, uid_t uid)
+ {
+ 	struct passwd pwd, *pwdptr;
+@@ -319,6 +329,7 @@
+ 	git__free(buf);
+ 	return error;
+ }
++#endif /* __amigaos__ */
+ #endif
+ 
+ static int git_sysdir_guess_home_dirs(git_str *out)

@@ -1,0 +1,20 @@
+# Upstream sources for the KiCad port, fetched at build time and checked
+# by SHA-256 (git pins by full commit). Never committed, never shipped.
+KICAD_VERSION=10.0.8
+KICAD_URL=https://gitlab.com/kicad/code/kicad/-/archive/10.0.8/kicad-10.0.8.tar.gz
+KICAD_SHA256=0723fedd82522fcd33cb9d8ad53979a35f6e4d3ec627c4e2e2708dfcba360574
+BOOST_URL=https://github.com/boostorg/boost/releases/download/boost-1.89.0/boost-1.89.0-b2-nodocs.tar.xz
+BOOST_SHA256=875cc413afa6b86922b6df3b2ad23dec4511c8a741753e57c1129e7fa753d700
+ZSTD_URL=https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz
+ZSTD_SHA256=eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3
+PROTOBUF_URL=https://github.com/protocolbuffers/protobuf/releases/download/v21.12/protobuf-cpp-3.21.12.tar.gz
+PROTOBUF_SHA256=4eab9b524aa5913c6fffb20b2a8abf5ef7f95a80bc0701f3a6dbb4c607f73460
+GLM_REPO=https://github.com/g-truc/glm
+GLM_COMMIT=0af55ccecd98d4e5a8d1fad7de25ba429d60e863
+LIBGIT2_REPO=https://github.com/libgit2/libgit2
+LIBGIT2_COMMIT=0060d9cf5666f015b1067129bd874c6cc4c9c7ac
+NGSPICE_URL=https://downloads.sourceforge.net/project/ngspice/ng-spice-rework/47/ngspice-47.tar.gz
+NGSPICE_SHA256=894e649651f1838a14095e5a5439e7d3aa63e87ede14d283173fda4fcdef675f
+# OpenNDK (our clean-room NDK, with the socket headers), from the Open SDK
+OPENSDK_REPO=https://github.com/DalsinAI/gfopensdk
+OPENSDK_COMMIT=007965a7905803c73f1caeae199badbd8f4c1b95

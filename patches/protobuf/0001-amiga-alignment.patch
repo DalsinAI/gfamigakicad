@@ -1,0 +1,30 @@
+--- a/src/google/protobuf/port_def.inc
++++ b/src/google/protobuf/port_def.inc
+@@ -359,7 +359,10 @@
+ #ifdef PROTOBUF_FUNC_ALIGN
+ #error PROTOBUF_FUNC_ALIGN was previously defined
+ #endif
+-#if __has_attribute(aligned) || PROTOBUF_GNUC_MIN(4, 3)
++#if defined(__amigaos__)
++// Amiga hunk objects align to at most 8 bytes: function alignment is a hint only.
++#define PROTOBUF_FUNC_ALIGN(bytes)
++#elif __has_attribute(aligned) || PROTOBUF_GNUC_MIN(4, 3)
+ #define PROTOBUF_FUNC_ALIGN(bytes) __attribute__((aligned(bytes)))
+ #else
+ #define PROTOBUF_FUNC_ALIGN(bytes)
+--- a/src/google/protobuf/arenastring.cc
++++ b/src/google/protobuf/arenastring.cc
+@@ -65,7 +65,13 @@
+ #endif
+ constexpr size_t kStringAlign = alignof(std::string);
+ 
++#if defined(__amigaos__)
++// m68k aligns std::string and the default new to 2 bytes, but libnix's
++// malloc (behind operator new) returns blocks aligned to at least 4, and
++// arena blocks are aligned to 8, which is what the tag bits need.
++#else
+ static_assert((kStringAlign > kNewAlign ? kStringAlign : kNewAlign) >= 4, "");
++#endif
+ static_assert(alignof(ExplicitlyConstructedArenaString) >= 4, "");
+ 
+ }  // namespace

@@ -1,0 +1,18 @@
+--- a/src/util/integer.h
++++ b/src/util/integer.h
+@@ -53,7 +53,14 @@
+ #if (__has_builtin(__builtin_add_overflow) || \
+      (defined(__GNUC__) && (__GNUC__ >= 5)))
+ 
+-# if (SIZE_MAX == UINT_MAX)
++# if defined(__amigaos__)
++/* m68k-amigaos: size_t is unsigned long though SIZE_MAX == UINT_MAX, so
++   take the type-generic builtins. */
++#  define git__add_sizet_overflow(out, one, two) \
++     __builtin_add_overflow(one, two, out)
++#  define git__multiply_sizet_overflow(out, one, two) \
++     __builtin_mul_overflow(one, two, out)
++# elif (SIZE_MAX == UINT_MAX)
+ #  define git__add_sizet_overflow(out, one, two) \
+      __builtin_uadd_overflow(one, two, out)
+ #  define git__multiply_sizet_overflow(out, one, two) \
