@@ -17,4 +17,19 @@ NGSPICE_URL=https://downloads.sourceforge.net/project/ngspice/ng-spice-rework/47
 NGSPICE_SHA256=894e649651f1838a14095e5a5439e7d3aa63e87ede14d283173fda4fcdef675f
 # OpenNDK (our clean-room NDK, with the socket headers), from the Open SDK
 OPENSDK_REPO=https://github.com/DalsinAI/gfopensdk
-OPENSDK_COMMIT=007965a7905803c73f1caeae199badbd8f4c1b95
+OPENSDK_COMMIT=60797bf2d7d7fb63c0e8169fb5a08cdcc35f180c
+
+# GFOpenWX Toolkit the SDK (WXSDK) is built from: PR #4 branch with STC
+TOOLKIT_REPO=https://github.com/DalsinAI/gfopenwxtoolkit
+TOOLKIT_COMMIT=7fb2de8eb56eac123103f5cbff0cd787ab937268
+# the toolkit's lab SDK at that commit (Cradle job output on the dev machine)
+TOOLKIT_SDK_JOB=j20261106T064303-a75b2e
+TOOLKIT_SDK_SHA256=5077bff7551052ef46c6b9fcdf2559b7372943e1f50e037a7498f326a008427b
+
+# libcurl (scripts/build-curl.sh): gfopencurl's build, with gfopentls's headers
+GFOPENCURL_COMMIT=ed7fe173a57e74dbe83a455f7fdb3ce7bf03d3be
+GFOPENTLS_COMMIT=aa6f6a5a34a0558351ece25f29066f51a4e85499
+PLAT_CURL_URL=https://github.com/curl/curl/releases/download/curl-8_22_0/curl-8.22.0.tar.xz
+PLAT_CURL_SHA256=f7ef3ae8a22e521f289803fe93543eb64c329b58aa73a9e224dfd915a2a5f4f7
+PLAT_NGHTTP2_URL=https://github.com/nghttp2/nghttp2/releases/download/v1.70.0/nghttp2-1.70.0.tar.xz
+PLAT_NGHTTP2_SHA256=e05cb1388eaca3830aded4ccf20044b6e1ac1a61411dcca11b0437c4285c8bc2

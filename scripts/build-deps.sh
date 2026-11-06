@@ -25,10 +25,19 @@ log() { echo "deps: $*"; }
 # our own small headers libnix lacks (endian.h)
 cp "$HERE"/compat/include/*.h "$DEPS/include/"
 
+# the POSIX calls libgit2 needs that libnix lacks (pread, pwrite, getpgid, getsid)
+mkdir -p "$WORK/obj/compat"
+$CC $OPT -include "$HERE/compat/include/gfamiga_prefix.h" -c -o "$WORK/obj/compat/gfamiga_posix.o" "$HERE/compat/src/gfamiga_posix.c"
+rm -f "$DEPS/lib/libgfamiga_compat.a"; $AR rcs "$DEPS/lib/libgfamiga_compat.a" "$WORK/obj/compat/gfamiga_posix.o"
+
 fetch() { # name url sha256 -> $DL/<file>
     f="$DL/$(basename "$2")"
+    # the upstream tarballs kept on the dev machine come first
+    if [ -n "${UPSTREAM_TARBALLS:-}" ] && [ -f "$UPSTREAM_TARBALLS/$(basename "$f")" ] && [ ! -f "$f" ]; then
+        cp "$UPSTREAM_TARBALLS/$(basename "$f")" "$f"
+    fi
     if [ ! -f "$f" ] || [ "$(sha256sum "$f" | cut -d' ' -f1)" != "$3" ]; then
-        log "fetch $1"
+        log "fetch $1" >&2
         curl -fsSL --retry 3 -o "$f.part" "$2"
         mv "$f.part" "$f"
     fi
@@ -63,6 +72,10 @@ patch_tree() { # name dir: apply patches/<name>/*.patch once
 done_for() { [ "$(cat "$DEPS/.$1" 2>/dev/null || true)" = "$2" ]; }
 mark() { echo "$2" > "$DEPS/.$1"; }
 
+# ---- the Open SDK: our libraries' headers (proto/gfopenfont.h...) and OpenNDK
+SDK=$(gitfetch opensdk "$OPENSDK_REPO" "$OPENSDK_COMMIT")
+log "Open SDK: $SDK"
+
 # ---- OpenNDK: the AmigaOS and socket headers. A stove has them as the
 # compiler's ndk-include; the GFOpenAmigaGCC release alone does not.
 NDK=${NDK:-}
@@ -70,11 +83,17 @@ if [ -z "$NDK" ]; then
     if [ -d "$TC/m68k-amigaos/ndk-include/sys" ] && [ -f "$TC/m68k-amigaos/ndk-include/sys/socket.h" ]; then
         NDK="$TC/m68k-amigaos/ndk-include"
     else
-        NDK="$(gitfetch opensdk "$OPENSDK_REPO" "$OPENSDK_COMMIT")/OpenNDK/Include_H"
+        NDK="$SDK/OpenNDK/Include_H"
     fi
 fi
 export KC_NDK="$NDK"
 log "NDK: $NDK"
+
+# ---- zlib's calls on the system's z.library (no zlib of our own): libz.a
+# and our zlib.h, for KiCad, libgit2 and the toolkit's streams alike
+$CC $OPT -isystem "$NDK" -I"$HERE/compat/include" -c -o "$WORK/obj/compat/gfamiga_zlib.o" "$HERE/compat/src/gfamiga_zlib.c"
+$CC $OPT -I"$HERE/compat/include" -c -o "$WORK/obj/compat/gfamiga_zlib_wx.o" "$HERE/compat/src/gfamiga_zlib_wx.c"
+rm -f "$DEPS/lib/libz.a"; $AR rcs "$DEPS/lib/libz.a" "$WORK/obj/compat/gfamiga_zlib.o" "$WORK/obj/compat/gfamiga_zlib_wx.o"
 
 # ---- zstd: libzstd.a
 if ! done_for zstd "$ZSTD_SHA256"; then
@@ -99,6 +118,11 @@ if ! done_for ngspice "$NGSPICE_SHA256"; then
     S=$(unpack "$(fetch ngspice "$NGSPICE_URL" "$NGSPICE_SHA256")")
     mkdir -p "$DEPS/include/ngspice"; cp "$S/src/include/ngspice/sharedspice.h" "$DEPS/include/ngspice/"
     mark ngspice "$NGSPICE_SHA256"; log "ngspice header done"
+fi
+# KiCad's find module wants a library file for it: an empty archive (the
+# simulator finds ngspice at run time, or says it isn't there)
+if [ ! -f "$DEPS/lib/libngspice_none.a" ]; then
+    printf '!<arch>\n' > "$DEPS/lib/libngspice_none.a"
 fi
 
 # ---- Boost: headers, and Boost.Locale on its std backend (no ICU, no iconv)
@@ -137,6 +161,8 @@ if ! done_for protobuf "$PROTOBUF_SHA256"; then
         -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_WITH_ZLIB=OFF -DCMAKE_INSTALL_PREFIX="$HOST" >/dev/null
     cmake --build "$WORK/obj/protoc-host" -j"$JOBS" --target protoc >/dev/null
     mkdir -p "$HOST/bin"; cp "$WORK/obj/protoc-host/protoc" "$HOST/bin/"
+    # protoc finds the well-known .proto files (any.proto ...) in ../include
+    ln -sfn "$DEPS/include" "$HOST/include"
     cmake -S "$S" -B "$WORK/obj/protobuf" -G Ninja -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
         -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_RELEASE="-O2 -I$DEPS/include" -Dprotobuf_BUILD_TESTS=OFF \
         -Dprotobuf_BUILD_PROTOC_BINARIES=OFF -Dprotobuf_BUILD_SHARED_LIBS=OFF \
@@ -149,17 +175,18 @@ if ! done_for protobuf "$PROTOBUF_SHA256"; then
 fi
 
 # ---- libgit2: local repositories only (no HTTPS, no SSH)
-if ! done_for libgit2 "$LIBGIT2_COMMIT"; then
+if ! done_for libgit2 "$LIBGIT2_COMMIT-o3"; then
     S=$(gitfetch libgit2 "$LIBGIT2_REPO" "$LIBGIT2_COMMIT"); patch_tree libgit2 "$S"
     cmake -S "$S" -B "$WORK/obj/libgit2" -G Ninja -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
         -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS_RELEASE="-O2 -DNO_MMAP" -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF -DCMAKE_C_STANDARD=99 -DCMAKE_C_EXTENSIONS=ON \
         -DBUILD_CLI=OFF -DUSE_HTTPS=OFF -DUSE_SSH=OFF -DUSE_GSSAPI=OFF -DUSE_NTLMCLIENT=OFF \
-        -DREGEX_BACKEND=builtin -DUSE_HTTP_PARSER=builtin -DUSE_BUNDLED_ZLIB=ON -DUSE_THREADS=ON \
+        -DREGEX_BACKEND=builtin -DUSE_HTTP_PARSER=builtin -DUSE_BUNDLED_ZLIB=OFF -DZLIB_INCLUDE_DIR="$DEPS/include" -DZLIB_LIBRARY="$DEPS/lib/libz.a" -DUSE_THREADS=ON \
         -DUSE_SHA1=CollisionDetection -DUSE_SHA256=Builtin -DUSE_ICONV=OFF -DUSE_NSEC=OFF \
+        -DGIT_QSORT_GNU=0 -DGIT_RAND_GETENTROPY=0 -DGIT_IO_POLL=0 \
         -DCMAKE_INSTALL_PREFIX="$DEPS" >/dev/null
     cmake --build "$WORK/obj/libgit2" -j"$JOBS" >/dev/null
     cmake --install "$WORK/obj/libgit2" >/dev/null
-    mark libgit2 "$LIBGIT2_COMMIT"; log "libgit2 done"
+    mark libgit2 "$LIBGIT2_COMMIT-o3"; log "libgit2 done"
 fi
 
 log "all done: $(ls "$DEPS/lib" | tr '\n' ' ')"

@@ -21,9 +21,19 @@ endif()
 set(CMAKE_C_FLAGS_INIT   "${KC_FLAGS} ${KC_CFLAGS}")
 set(CMAKE_CXX_FLAGS_INIT "${KC_FLAGS} ${KC_CFLAGS}")
 set(CMAKE_EXE_LINKER_FLAGS_INIT "${KC_FLAGS}")
-set(CMAKE_FIND_ROOT_PATH "${TC}/m68k-amigaos" "$ENV{DEPS_PREFIX}")
+# GCC's libatomic (std::atomic exchange, libgit2) and libnix's bsdsocket stubs
+# KC_EXTRA_LIBS (a cache variable): what the static platform libraries need
+# after them (cairo's pixman, png, fontconfig, expat; curl's nghttp2...)
+set(CMAKE_C_STANDARD_LIBRARIES   "${KC_EXTRA_LIBS} -latomic -lsocket")
+set(CMAKE_CXX_STANDARD_LIBRARIES "${KC_EXTRA_LIBS} -latomic -lsocket")
+# where target headers and libraries are found: the compiler's, our built
+# dependencies, and KC_ROOTS (more prefixes, separated by ;)
+set(CMAKE_FIND_ROOT_PATH "${TC}/m68k-amigaos" "$ENV{DEPS_PREFIX}" $ENV{KC_ROOTS})
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+# pkg-config must never answer with the build machine's own libraries
+set(ENV{PKG_CONFIG_LIBDIR} "$ENV{DEPS_PREFIX}/lib/pkgconfig")
+set(ENV{PKG_CONFIG_PATH} "")

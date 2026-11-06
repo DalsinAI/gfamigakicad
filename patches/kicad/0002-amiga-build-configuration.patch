@@ -1,0 +1,1503 @@
+diff --git a/3d-viewer/CMakeLists.txt b/3d-viewer/CMakeLists.txt
+index 25324fce..981688e3 100644
+--- a/3d-viewer/CMakeLists.txt
++++ b/3d-viewer/CMakeLists.txt
+@@ -138,7 +138,7 @@ target_link_libraries( 3d-viewer
+ add_subdirectory( 3d_cache )
+ 
+ 
+-if( UNIX AND NOT APPLE )
++if( UNIX AND NOT APPLE AND NOT KICAD_AMIGA )
+     message( STATUS "Including libspnav support in 3d-viewer" )
+     add_subdirectory( 3d_spacenav )
+     target_link_libraries( 3d-viewer PRIVATE 3d-viewer_spacenav )
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 420f18bc..22de9fc7 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -107,6 +107,34 @@ endif()
+ ####################################
+ # Feature flags
+ ####################################
++# AmigaOS 3 (gfamigakicad): static libraries only, kifaces linked into
++# the programs, no Python, OpenCASCADE, OpenGL or webview yet.
++option( KICAD_AMIGA
++    "Build for AmigaOS 3 on the GFOpenWX Toolkit (default OFF)"
++    OFF )
++
++# the editors' kifaces: loadable modules, or on AmigaOS (no dynamic loading)
++# static libraries each editor's program carries (below)
++set( KICAD_KIFACE_TYPE MODULE )
++
++if( KICAD_AMIGA )
++    set( KICAD_KIFACE_TYPE STATIC )
++    add_compile_definitions( KICAD_AMIGA )
++    # static libraries only, which name each other in every order: the linker
++    # goes over them until nothing more resolves
++    set( CMAKE_CXX_LINK_EXECUTABLE
++         "<CMAKE_CXX_COMPILER> <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> -Wl,--start-group <LINK_LIBRARIES> -Wl,--end-group" )
++    # wx classes the GFOpenWX Toolkit does not build yet (amiga/amiga_wx_compat.h)
++    include_directories( ${CMAKE_SOURCE_DIR}/amiga )
++    # our font headers before KiCad's: gfopenfont.library in place of FreeType,
++    # HarfBuzz and Fontconfig; the Open SDK's library headers (proto/gfopenfont.h)
++    include_directories( BEFORE ${CMAKE_SOURCE_DIR}/amiga/include )
++    include_directories( SYSTEM ${KICAD_AMIGA_SDK_INCLUDE} )
++    # GL/gl.h and GL/glu.h until the toolkit has an OpenGL canvas
++    include_directories( ${CMAKE_SOURCE_DIR}/amiga/glstub ${CMAKE_SOURCE_DIR}/thirdparty/glad/include )
++    add_compile_options( "$<$<COMPILE_LANGUAGE:CXX>:SHELL:-include amiga_wx_compat.h>" )
++endif()
++
+ option( KICAD_SPICE_QA
+     "Build software Quality assurance unit tests for spice (default ON)"
+     ON )
+@@ -831,7 +859,7 @@ find_package(ZSTD REQUIRED)
+ #
+ find_package( CURL REQUIRED )
+ 
+-if( UNIX AND NOT APPLE )
++if( UNIX AND NOT APPLE AND NOT KICAD_AMIGA )
+     find_package( SPNAV REQUIRED )
+     include_directories( SYSTEM ${SPNAV_INCLUDE_DIR} )
+ endif()
+@@ -839,11 +867,17 @@ endif()
+ #
+ # Find Cairo library, required
+ #
++if( KICAD_AMIGA )
++    # Amiga: the canvas draws through gfopengpu.library, no cairo or pixman
++    set( CAIRO_LIBRARIES "" )
++    set( PIXMAN_LIBRARIES "" )
++else()
+ find_package( Cairo 1.12 REQUIRED )
+ include_directories( SYSTEM ${CAIRO_INCLUDE_DIR} )
+ 
+ find_package( Pixman 0.30 REQUIRED )
+ include_directories( SYSTEM ${PIXMAN_INCLUDE_DIR} )
++endif()
+ 
+ # Find libgit2, required
+ find_package( libgit2 1.5 REQUIRED )
+@@ -869,6 +903,12 @@ if( MSVC )
+ set( FREETYPE_MIN_VERSION 2.11.1 )
+ endif()
+ 
++if( KICAD_AMIGA )
++    # gfopenfont.library finds, shapes and outlines the fonts
++    set( FREETYPE_LIBRARIES "" )
++    set( HarfBuzz_LIBRARIES "" )
++    set( Fontconfig_LIBRARIES "" )
++else()
+ find_package( Freetype ${FREETYPE_MIN_VERSION} REQUIRED )
+ include_directories( SYSTEM ${FREETYPE_INCLUDE_DIRS} )
+ 
+@@ -876,6 +916,7 @@ find_package( HarfBuzz REQUIRED )
+ include_directories( SYSTEM ${HarfBuzz_INCLUDE_DIRS} )
+ 
+ find_package( Fontconfig REQUIRED )
++endif()
+ 
+ # Include MinGW resource compiler.
+ include( MinGWResourceCompiler )
+@@ -884,8 +925,17 @@ include( MinGWResourceCompiler )
+ find_package( ngspice REQUIRED )
+ 
+ # Find OpenCascade, required for STEP plugin and tools
++if( KICAD_AMIGA )
++    # OpenCASCADE is not ported yet: STEP and the other OCC exporters are
++    # left out (amiga/no_occ.cpp says so when asked for)
++    set( OCC_FOUND FALSE )
++    set( OCC_VERSION_STRING 7.5.0 )
++    set( OCC_INCLUDE_DIR "" )
++    set( OCC_LIBRARIES "" )
++else()
+ find_package(OCC)
+-if( NOT OCC_FOUND )
++endif()
++if( NOT OCC_FOUND AND NOT KICAD_AMIGA )
+     MESSAGE( FATAL_ERROR "================================================================\n"
+                          " OpenCASCADE was not found!\n"
+                          "================================================================\n")
+@@ -954,9 +1004,11 @@ set( INC_AFTER
+ # Find Python and other scripting resources
+ #
+ 
++if( NOT KICAD_AMIGA )
+ # SWIG 4.0 or later require for proper C++11 support.
+ find_package( SWIG 4.0 REQUIRED )
+ include( ${SWIG_USE_FILE} )
++endif()
+ 
+ set( PythonInterp_FIND_VERSION 3.6 )
+ set( PythonLibs_FIND_VERSION 3.6 )
+@@ -1014,7 +1066,14 @@ else()
+ endif()
+ message( STATUS "Python module install path: ${PYTHON_DEST}" )
+ 
++if( KICAD_AMIGA )
++    # no Python on the Amiga yet: scripting is left out
++    set( PYTHON_INCLUDE_DIRS "" )
++    set( PYTHON_LIBRARIES "" )
++    set( PYTHONLIBS_VERSION_STRING "" )
++else()
+ find_package( PythonLibs 3.6 REQUIRED )
++endif()
+ 
+ # pybind11 is header-only, so include the subdir
+ # USE_CROSSCOMPILING is needed to avoid pybind11 trying to run a non-native intrepreter
+@@ -1075,6 +1134,8 @@ if( WXWIDGETS_REQUESTED_TOOLKIT
+     message( WARNING "wxWidgets and wxPython must be based on the same toolkit.\n"
+         "It will be fixed automatically if you skip the '--toolkit=xxx' "
+         "wxWidgets_CONFIG_OPTIONS parameter.")
++elseif( KICAD_AMIGA )
++    # the GFOpenWX Toolkit has one port, openlayout
+ elseif( UNIX AND NOT APPLE )
+     # Force the use of GTK3 on Linux
+     set( wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} "--toolkit=gtk3" )
+@@ -1091,9 +1152,16 @@ else()
+ endif()
+ 
+ # See line 49 of cmake/FindwxWidgets.cmake
++if( KICAD_AMIGA )
++    # the toolkit is one static build; no webview, and no gl until wxGLCanvas is in it
++    find_package( wxWidgets ${wxWidgets_REQ_VERSION} COMPONENTS aui adv html core net base propgrid xml stc richtext REQUIRED )
++    # zlib is the system's z.library (gfamiga_zlib.c's libz.a): the toolkit's own copy stays out
++    list( TRANSFORM wxWidgets_LIBRARIES REPLACE ".*libwxzlib-[0-9.]+\\.a$" "${ZLIB_LIBRARIES}" )
++else()
+ set( wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} --static=no )
+ 
+ find_package( wxWidgets ${wxWidgets_REQ_VERSION} COMPONENTS gl aui adv html core net base propgrid xml stc richtext webview REQUIRED )
++endif()
+ 
+ # Include wxWidgets macros.
+ include( ${wxWidgets_USE_FILE} )
+@@ -1108,7 +1176,7 @@ if( wxWidgets_FIND_STYLE STREQUAL "win32" )
+         add_compile_definitions( __WXGTK__ )
+     endif()
+ elseif( _wx_selected_config )
+-    string(REGEX MATCH "(msw|qt|gtk|osx)" KICAD_WX_PORT "${_wx_selected_config}")
++    string(REGEX MATCH "(msw|qt|gtk|osx|openlayout)" KICAD_WX_PORT "${_wx_selected_config}")
+ endif()
+ 
+ if( KICAD_WX_PORT )
+@@ -1138,7 +1206,9 @@ message(STATUS "wxHAS_GLX=${wxWidgets_HAS_GLX}")
+ message(STATUS "wxHAS_EGL=${wxWidgets_HAS_EGL}")
+ 
+ # Find OpenGL with GLU
++if( NOT KICAD_AMIGA )
+ find_package( OpenGL REQUIRED )
++endif()
+ 
+ if( KICAD_WAYLAND )
+     message( STATUS "Configuring KiCad to support Wayland features" )
+@@ -1241,6 +1311,16 @@ add_subdirectory( pcb_calculator )
+ add_subdirectory( plugins )             # 3D plugins must be built before kicad
+ add_subdirectory( cvpcb )               # must be after pcbnew
+ add_subdirectory( kicad )               # should follow pcbnew, eeschema, api
++
++if( KICAD_AMIGA )
++    # no dynamic loading on AmigaOS: each editor's program carries its kiface
++    # (single_top.cpp then takes the getter it is linked with)
++    target_link_libraries( eeschema eeschema_kiface )
++    target_link_libraries( pcbnew pcbnew_kiface )
++    target_link_libraries( gerbview gerbview_kiface )
++    target_link_libraries( pl_editor pl_editor_kiface )
++    target_link_libraries( pcb_calculator pcb_calculator_kiface )
++endif()
+ add_subdirectory( tools )
+ add_subdirectory( utils )
+ 
+diff --git a/cmake/ConfigurePlatform.cmake b/cmake/ConfigurePlatform.cmake
+index 8daf035a..3bc70266 100644
+--- a/cmake/ConfigurePlatform.cmake
++++ b/cmake/ConfigurePlatform.cmake
+@@ -45,7 +45,10 @@ if( MSVC )
+         string(TOUPPER ${KICAD_BUILD_ARCH} CMAKE_SYSTEM_PROCESSOR)
+     endif()
+ else()
+-    if( CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|ARM64|AARCH64" )
++    if( CMAKE_SYSTEM_PROCESSOR MATCHES "m68k" )
++        set( KICAD_BUILD_ARCH "m68k" )
++        set( KICAD_BUILD_ARCH_M68K 1 )
++    elseif( CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|ARM64|AARCH64" )
+         set( KICAD_BUILD_ARCH "arm64" )
+         set( KICAD_BUILD_ARCH_ARM64 1 )
+     elseif( CMAKE_SYSTEM_PROCESSOR MATCHES "arm|ARM" )
+diff --git a/common/CMakeLists.txt b/common/CMakeLists.txt
+index 0144ac4f..e8569968 100644
+--- a/common/CMakeLists.txt
++++ b/common/CMakeLists.txt
+@@ -90,8 +90,9 @@ install( FILES
+ set( KICOMMON_SRCS
+     # Fonts
+     newstroke_font.cpp
+-    font/fontconfig.cpp
+-    font/version_info.cpp
++    $<IF:$<BOOL:${KICAD_AMIGA}>,${CMAKE_SOURCE_DIR}/amiga/font/fontconfig_gfopenfont.cpp,font/fontconfig.cpp>
++    $<IF:$<BOOL:${KICAD_AMIGA}>,${CMAKE_SOURCE_DIR}/amiga/font/version_info_gfopenfont.cpp,font/version_info.cpp>
++    $<$<BOOL:${KICAD_AMIGA}>:${CMAKE_SOURCE_DIR}/amiga/font/gfopenfont_kicad.cpp>
+ 
+     # Gal
+     gal/color4d.cpp
+@@ -315,7 +316,9 @@ set( KICOMMON_SRCS
+     singleton.cpp
+     pgm_base.cpp
+ 
+-    ../scripting/python_scripting.cpp
++    $<IF:$<BOOL:${KICAD_AMIGA}>,${CMAKE_SOURCE_DIR}/amiga/python_scripting_none.cpp,../scripting/python_scripting.cpp>
++    $<$<BOOL:${KICAD_AMIGA}>:${CMAKE_SOURCE_DIR}/amiga/amiga_wx_compat.cpp>
++    $<$<BOOL:${KICAD_AMIGA}>:${CMAKE_SOURCE_DIR}/amiga/glu_none.cpp>
+ 
+     io/kicad/kicad_io_utils.cpp    # needed by richio
+     io/io_base.cpp
+@@ -331,7 +334,7 @@ set( KICOMMON_SRCS
+     startwizard/startwizard_provider_settings.cpp
+     )
+ 
+-if( UNIX AND NOT APPLE )
++if( UNIX AND NOT APPLE AND NOT KICAD_AMIGA )
+     list( APPEND KICOMMON_SRCS
+         spacenav/libspnav_driver.cpp
+     )
+@@ -855,7 +858,7 @@ set( COMMON_SRCS
+     properties/property_mgr.cpp
+     properties/std_optional_variants.cpp
+ 
+-    database/database_connection.cpp
++    $<IF:$<BOOL:${KICAD_AMIGA}>,${CMAKE_SOURCE_DIR}/amiga/database_connection_none.cpp,database/database_connection.cpp>
+ 
+     http_lib/http_lib_connection.cpp
+     http_lib/http_lib_settings.cpp
+@@ -864,7 +867,7 @@ set( COMMON_SRCS
+     )
+ 
+ # This needs to be in the common library until draw_panel_gal is moved to kicommon
+-if( UNIX AND NOT APPLE )
++if( UNIX AND NOT APPLE AND NOT KICAD_AMIGA )
+     list( APPEND COMMON_SRCS
+         spacenav/spnav_2d_plugin.cpp
+     )
+@@ -926,7 +929,7 @@ target_link_libraries( common
+     compoundfilereader
+     Boost::headers
+     # Database support needs these two
+-    nanodbc # for now; maybe hoist out of common
++    $<$<NOT:$<BOOL:${KICAD_AMIGA}>>:nanodbc> # for now; maybe hoist out of common
+     Boost::locale
+     ${wxWidgets_LIBRARIES}
+     ${EXTRA_LIBS}
+@@ -963,9 +966,11 @@ target_include_directories( common PUBLIC
+     $<TARGET_PROPERTY:magic_enum,INTERFACE_INCLUDE_DIRECTORIES>
+     )
+ 
++if( NOT KICAD_AMIGA )
+ target_include_directories( common SYSTEM PUBLIC
+     $<TARGET_PROPERTY:nanodbc,INTERFACE_INCLUDE_DIRECTORIES>
+     )
++endif()
+ 
+ set( PCB_COMMON_SRCS
+     hash_eda.cpp
+@@ -1109,7 +1114,7 @@ target_link_libraries( pcbcommon PUBLIC
+     zint
+ )
+ 
+-if( APPLE OR NOT UNIX )
++if( APPLE OR NOT UNIX OR KICAD_AMIGA )
+     # On Windows/MacOS, the SpaceMouse support is provided by the navlib subdirectory
+     message( STATUS "Including 3Dconnexion SpaceMouse navigation support in pcbcommon" )
+     add_subdirectory( ../pcbnew/navlib ./navlib)
+diff --git a/common/bitmap_base.cpp b/common/bitmap_base.cpp
+index f1d84d4e..5e7e3576 100644
+--- a/common/bitmap_base.cpp
++++ b/common/bitmap_base.cpp
+@@ -322,9 +322,13 @@ void BITMAP_BASE::DrawBitmap( wxDC* aDC, const VECTOR2I& aPos,
+     // and the bitmap position when using TransformMatrix
+     // So for version == 3.1.6  do not use it
+     // Be careful before changing the code.
++#if wxUSE_DC_TRANSFORM_MATRIX
+     bool useTransform = aDC->CanUseTransformMatrix();
+ 
+     wxAffineMatrix2D init_matrix = aDC->GetTransformMatrix();
++#else
++    bool useTransform = false;
++#endif
+ 
+     // Note: clipping bitmap area was made to fix a minor issue in old versions of
+     // KiCad/wxWidgets (5.1 / wx 3.0)
+@@ -338,10 +342,12 @@ void BITMAP_BASE::DrawBitmap( wxDC* aDC, const VECTOR2I& aPos,
+ 
+     if( useTransform )
+     {
++#if wxUSE_DC_TRANSFORM_MATRIX
+         wxAffineMatrix2D matrix = aDC->GetTransformMatrix();
+         matrix.Translate( pos.x, pos.y );
+         matrix.Scale( GetScalingFactor(), GetScalingFactor() );
+         aDC->SetTransformMatrix( matrix );
++#endif
+ 
+         // Needed on wx <= 3.1.5, and this is strange...
+         // Nevertheless, this code has problem (the bitmap is not seen)
+@@ -400,7 +406,11 @@ void BITMAP_BASE::DrawBitmap( wxDC* aDC, const VECTOR2I& aPos,
+     }
+ 
+     if( useTransform )
++    {
++#if wxUSE_DC_TRANSFORM_MATRIX
+         aDC->SetTransformMatrix( init_matrix );
++#endif
++    }
+     else
+     {
+         aDC->SetUserScale( scale, scale );
+diff --git a/common/build_version.cpp b/common/build_version.cpp
+index f8218e38..f65ebdd2 100644
+--- a/common/build_version.cpp
++++ b/common/build_version.cpp
+@@ -41,7 +41,11 @@
+ extern std::string GetKicadCurlVersion();
+ extern std::string GetCurlLibVersion();
+ 
++#ifdef KICAD_AMIGA
++#define OCC_VERSION_COMPLETE "not built (no STEP support yet)"
++#else
+ #include <Standard_Version.hxx>
++#endif
+ 
+ #include <ngspice/sharedspice.h>
+ 
+diff --git a/common/dialogs/panel_plugin_settings.cpp b/common/dialogs/panel_plugin_settings.cpp
+index 40d39a77..e10e6722 100644
+--- a/common/dialogs/panel_plugin_settings.cpp
++++ b/common/dialogs/panel_plugin_settings.cpp
+@@ -70,8 +70,12 @@ bool PANEL_PLUGIN_SETTINGS::TransferDataFromWindow()
+ 
+         settings->m_Api.python_interpreter = interpreter;
+ 
++#ifdef KICAD_IPC_API
+         if( interpreterChanged )
+             Pgm().GetPluginManager().HandlePythonInterpreterChanged();
++#else
++        wxUnusedVar( interpreterChanged );
++#endif
+     }
+ 
+     settings->m_Api.enable_server = m_cbEnableApi->GetValue();
+diff --git a/common/draw_panel_gal.cpp b/common/draw_panel_gal.cpp
+index 5c1423fd..18dae543 100644
+--- a/common/draw_panel_gal.cpp
++++ b/common/draw_panel_gal.cpp
+@@ -38,7 +38,9 @@
+ #include <base_screen.h>
+ #include <gal/cursors.h>
+ #include <gal/graphics_abstraction_layer.h>
++#ifndef KICAD_AMIGA
+ #include <gal/opengl/opengl_gal.h>
++#endif
+ #include <gal/opengl/gpu_oom_error.h>
+ #include <gal/cairo/cairo_gal.h>
+ #include <math/vector2wx.h>
+@@ -695,12 +697,16 @@ void EDA_DRAW_PANEL_GAL::ForceRefresh()
+ 
+ bool EDA_DRAW_PANEL_GAL::GetScreenshot( wxImage& aDstImage )
+ {
++#ifdef KICAD_AMIGA
++    return false;
++#else
+     if( m_backend != GAL_TYPE_OPENGL || !m_gal )
+         return false;
+ 
+     DoRePaint( false );
+ 
+     return static_cast<KIGFX::OPENGL_GAL*>( m_gal )->GetScreenshot( aDstImage );
++#endif
+ }
+ 
+ 
+@@ -778,6 +784,12 @@ bool EDA_DRAW_PANEL_GAL::SwitchBackend( GAL_TYPE aGalType )
+         {
+         case GAL_TYPE_OPENGL:
+         {
++#ifdef KICAD_AMIGA
++            // No wxGLCanvas in the GFOpenWX Toolkit yet: draw with Cairo
++            aGalType = GAL_TYPE_CAIRO;
++            new_gal = new KIGFX::CAIRO_GAL( m_options, this, this, this );
++            break;
++#else
+             wxString errormsg = KIGFX::OPENGL_GAL::CheckFeatures( m_options );
+ 
+             if( errormsg.empty() )
+@@ -803,6 +815,7 @@ bool EDA_DRAW_PANEL_GAL::SwitchBackend( GAL_TYPE aGalType )
+             }
+ 
+             break;
++#endif
+         }
+ 
+         case GAL_TYPE_CAIRO:
+diff --git a/common/gal/CMakeLists.txt b/common/gal/CMakeLists.txt
+index 19537f46..1bc1b2c3 100644
+--- a/common/gal/CMakeLists.txt
++++ b/common/gal/CMakeLists.txt
+@@ -4,8 +4,8 @@ set( FONT_SRCS
+     ../font/font.cpp
+     ../font/glyph.cpp
+     ../font/stroke_font.cpp
+-	../font/outline_font.cpp
+-	../font/outline_decomposer.cpp
++	$<IF:$<BOOL:${KICAD_AMIGA}>,${CMAKE_SOURCE_DIR}/amiga/font/outline_font_gfopenfont.cpp,../font/outline_font.cpp>
++	$<IF:$<BOOL:${KICAD_AMIGA}>,${CMAKE_SOURCE_DIR}/amiga/font/outline_decomposer_gfopenfont.cpp,../font/outline_decomposer.cpp>
+     ../font/text_attributes.cpp
+ 	)
+ 
+@@ -53,6 +53,17 @@ set( GAL_SRCS
+     cairo/cairo_print.cpp
+     )
+ 
++if( KICAD_AMIGA )
++    # No wxGLCanvas in the GFOpenWX Toolkit yet: the Cairo GAL draws everything,
++    # and it draws through gfopengpu.library (amiga/gal/ogpu_canvas.cpp), not cairo
++    list( FILTER GAL_SRCS EXCLUDE REGEX "opengl/|cairo/" )
++    list( APPEND GAL_SRCS
++        ${CMAKE_SOURCE_DIR}/amiga/gal/ogpu_canvas.cpp
++        ${CMAKE_SOURCE_DIR}/amiga/gal/cairo_gal_ogpu.cpp
++        ${CMAKE_SOURCE_DIR}/amiga/gal/cairo_compositor_ogpu.cpp
++        ${CMAKE_SOURCE_DIR}/amiga/gal/cairo_print_ogpu.cpp )
++endif()
++
+ add_library( gal SHARED ${GAL_SRCS} )
+ 
+ if( KICAD_USE_PCH )
+diff --git a/common/navlib_safe_init.cpp b/common/navlib_safe_init.cpp
+index 39e976b9..be106671 100644
+--- a/common/navlib_safe_init.cpp
++++ b/common/navlib_safe_init.cpp
+@@ -25,14 +25,14 @@
+ #include <exception>
+ #include <mutex>
+ 
+-#if !defined( __WINDOWS__ )
++#if !defined( __WINDOWS__ ) && !defined( __amigaos__ )
+ #include <signal.h>
+ #include <setjmp.h>
+ #endif
+ 
+ static std::atomic<bool> s_driverCrashed( false );
+ 
+-#if !defined( __WINDOWS__ )
++#if !defined( __WINDOWS__ ) && !defined( __amigaos__ )
+ 
+ // SIGABRT disposition and the recovery jump buffer are process-wide, so concurrent
+ // initialization attempts must be serialized. The saved disposition uses static storage
+@@ -54,7 +54,7 @@ bool SafeNavlibInit( const std::function<void()>& aInitFunc )
+     if( s_driverCrashed.load() )
+         return false;
+ 
+-#if !defined( __WINDOWS__ )
++#if !defined( __WINDOWS__ ) && !defined( __amigaos__ )
+     // Install a temporary SIGABRT handler to recover from abort() calls triggered by
+     // buggy 3Dconnexion drivers. The driver on some macOS versions calls std::terminate()
+     // from a noexcept context inside NlCreate, which calls abort(). By catching SIGABRT
+diff --git a/common/plotters/PDF_plotter.cpp b/common/plotters/PDF_plotter.cpp
+index 4bd648e3..9691cb80 100644
+--- a/common/plotters/PDF_plotter.cpp
++++ b/common/plotters/PDF_plotter.cpp
+@@ -2346,8 +2346,13 @@ VECTOR2I PDF_PLOTTER::renderWord( const wxString& aWord, const VECTOR2I& aPositi
+ 
+         if( aFont->IsOutline() )
+         {
++#ifdef KICAD_AMIGA
++            KIFONT::OUTLINE_FONT* outline = static_cast<KIFONT::OUTLINE_FONT*>( aFont );
++            styleFlags = ( outline->FaceIsItalic() ? 1 : 0 ) | ( outline->FaceIsBold() ? 2 : 0 );
++#else
+             if( const FT_Face& face = static_cast<KIFONT::OUTLINE_FONT*>( aFont )->GetFace() )
+                 styleFlags = (int) face->style_flags;
++#endif
+         }
+ 
+         wxLogTrace( tracePdfPlotter, "renderWord enter word='%s' bold=%d italic=%d textStyle=%u styleFlags=%d",
+diff --git a/common/plotters/pdf_outline_font.cpp b/common/plotters/pdf_outline_font.cpp
+index ec1662bb..5804ac99 100644
+--- a/common/plotters/pdf_outline_font.cpp
++++ b/common/plotters/pdf_outline_font.cpp
+@@ -31,14 +31,24 @@
+ #include <cmath>
+ 
+ #include <fmt/format.h>
++#ifndef KICAD_AMIGA
+ #include <harfbuzz/hb-ft.h>
+ #include <harfbuzz/hb.h>
++#endif
+ #include <wx/ffile.h>
+ 
+ #include <core/utf8.h>
+ 
++#ifdef KICAD_AMIGA
++// gfopenfont.library in place of FreeType and HarfBuzz
++#include <font/gfopenfont_kicad.h>
++#include <exec/types.h>
++#include <libraries/gfopenfont.h>
++#include <proto/gfopenfont.h>
++#else
+ #include <ft2build.h>
+ #include FT_FREETYPE_H
++#endif
+ 
+ #include <font/font.h>
+ 
+@@ -126,6 +136,39 @@ PDF_OUTLINE_FONT_SUBSET::PDF_OUTLINE_FONT_SUBSET( KIFONT::OUTLINE_FONT* aFont, u
+         m_toUnicodeHandle( -1 ),
+         m_fontHandle( -1 )
+ {
++#ifdef KICAD_AMIGA
++    OFFace* face = aFont ? aFont->GetFace() : nullptr;
++
++    if( face )
++    {
++        // head: unitsPerEm at 18, xMin yMin xMax yMax at 36; hhea: ascender, descender at 4
++        unsigned upem = gfopenfont::TableU16( face, "head", 18, 0 );
++
++        if( upem > 0 )
++            m_unitsPerEm = static_cast<double>( upem );
++
++        double yMax = gfopenfont::TableS16( face, "head", 42, 0 );
++        m_ascent = unitsToPdf( gfopenfont::TableS16( face, "hhea", 4, 0 ), m_unitsPerEm );
++        m_descent = unitsToPdf( gfopenfont::TableS16( face, "hhea", 6, 0 ), m_unitsPerEm );
++        m_capHeight = unitsToPdf( yMax, m_unitsPerEm );
++        m_bboxMinX = unitsToPdf( gfopenfont::TableS16( face, "head", 36, 0 ), m_unitsPerEm );
++        m_bboxMinY = unitsToPdf( gfopenfont::TableS16( face, "head", 38, 0 ), m_unitsPerEm );
++        m_bboxMaxX = unitsToPdf( gfopenfont::TableS16( face, "head", 40, 0 ), m_unitsPerEm );
++        m_bboxMaxY = unitsToPdf( yMax, m_unitsPerEm );
++
++        if( aFont->FaceIsItalic() || aFont->IsItalic() )
++            m_italicAngle = -12.0;
++
++        if( aFont->IsBold() )
++            m_stemV = 140.0;
++
++        if( aFont->FaceIsFixedWidth() )
++            m_flags |= 1;
++
++        if( aFont->IsItalic() )
++            m_flags |= 64;
++    }
++#else
+     FT_Face face = aFont ? aFont->GetFace() : nullptr;
+ 
+     if( face )
+@@ -155,6 +198,7 @@ PDF_OUTLINE_FONT_SUBSET::PDF_OUTLINE_FONT_SUBSET( KIFONT::OUTLINE_FONT* aFont, u
+         if( aFont->IsItalic() )
+             m_flags |= 64;
+     }
++#endif
+ 
+     m_widths.resize( 1, 0.0 );
+     m_cidToGid.resize( 1, 0 );
+@@ -190,6 +234,22 @@ uint16_t PDF_OUTLINE_FONT_SUBSET::EnsureGlyph( uint32_t aGlyphIndex, const std::
+ 
+     ensureNotdef();
+ 
++#ifdef KICAD_AMIGA
++    OFFace* face = m_font ? m_font->GetFace() : nullptr;
++
++    if( !face )
++        return 0;
++
++    // the advance in font units, from hmtx (hhea's numberOfHMetrics at 34;
++    // glyphs past it take the last metric's advance)
++    unsigned numMetrics = gfopenfont::TableU16( face, "hhea", 34, 0 );
++
++    if( numMetrics == 0 )
++        return 0;
++
++    unsigned metric = std::min<unsigned>( aGlyphIndex, numMetrics - 1 );
++    double   rawAdvance266 = 64.0 * gfopenfont::TableU16( face, "hmtx", metric * 4, 0 );
++#else
+     FT_Face face = m_font ? m_font->GetFace() : nullptr;
+ 
+     if( !face )
+@@ -201,6 +261,7 @@ uint16_t PDF_OUTLINE_FONT_SUBSET::EnsureGlyph( uint32_t aGlyphIndex, const std::
+     // For FT_LOAD_NO_SCALE the advance.x should be in font units (26.6) unless metrics differ.
+     // We divide by 64.0 to get raw font units; convert to our internal PDF user units via unitsToPdf.
+     double rawAdvance266 = static_cast<double>( face->glyph->advance.x );
++#endif
+     double rawAdvanceFontUnits = rawAdvance266 / 64.0;
+     double advance = unitsToPdf( rawAdvanceFontUnits, m_unitsPerEm );
+ 
+@@ -431,15 +492,24 @@ PDF_OUTLINE_FONT_SUBSET* PDF_OUTLINE_FONT_MANAGER::ensureSubset( KIFONT::OUTLINE
+     // is set. (m_fakeItal only indicates substitution missing an italic variant.)
+     bool faceHasRealItalic = false;
+     bool faceHasRealBold   = false;
++#ifdef KICAD_AMIGA
++    if( aFont->GetFace() )
++    {
++        faceHasRealItalic = aFont->FaceIsItalic();
++        faceHasRealBold   = aFont->FaceIsBold();
++    }
++#else
+     if( const FT_Face& face = aFont->GetFace() )
+     {
+         faceHasRealItalic = ( face->style_flags & FT_STYLE_FLAG_ITALIC ) != 0;
+         faceHasRealBold   = ( face->style_flags & FT_STYLE_FLAG_BOLD ) != 0;
+     }
++#endif
+ 
+     bool needSyntheticItalic = aItalic && !faceHasRealItalic; // ignore fake italic
+     bool needSyntheticBold   = aBold && !faceHasRealBold;     // ignore fake bold
+ 
++#ifndef KICAD_AMIGA
+     if( std::getenv( "KICAD_DEBUG_SYN_STYLE" ) )
+     {
+         const FT_Face& face = aFont->GetFace();
+@@ -457,6 +527,7 @@ PDF_OUTLINE_FONT_SUBSET* PDF_OUTLINE_FONT_MANAGER::ensureSubset( KIFONT::OUTLINE
+                     (int) needSyntheticItalic, (int) needSyntheticBold, (int) aItalic, (int) aBold,
+                     subsetPtr->Font()->GetFace() ? subsetPtr->Font()->GetFace()->face_index : 0 );
+     }
++#endif
+ 
+     if( needSyntheticItalic || needSyntheticBold )
+     {
+@@ -499,6 +570,75 @@ void PDF_OUTLINE_FONT_MANAGER::EncodeString( const wxString& aText, KIFONT::OUTL
+     UTF8        utf8Text( aText );
+     std::string textUtf8 = utf8Text.substr();
+ 
++#ifdef KICAD_AMIGA
++    // shaped at the face's units per em, so the 26.6 answers are font units times 64
++    std::vector<struct OFGlyph> glyphs;
++    OFFace*                     face = aFont->GetFace();
++
++    if( !face )
++        return;
++
++    {
++        std::lock_guard<std::mutex> guard( KIFONT::OUTLINE_FONT::FaceMutex() );
++
++        OF_SetSize( face, (ULONG) subset->UnitsPerEm() );
++
++        ULONG count = OF_ShapeText( face, (CONST_STRPTR) textUtf8.c_str(), textUtf8.size(),
++                                    nullptr, 0 );
++
++        if( count )
++        {
++            glyphs.resize( count );
++            count = OF_ShapeText( face, (CONST_STRPTR) textUtf8.c_str(), textUtf8.size(),
++                                  glyphs.data(), count );
++            glyphs.resize( std::min<size_t>( count, glyphs.size() ) );
++        }
++    }
++
++    unsigned int glyphCount = glyphs.size();
++
++    if( glyphCount == 0 )
++        return;
++
++    PDF_OUTLINE_FONT_RUN run;
++    run.m_subset = subset;
++
++    bool hasVisibleGlyph = false;
++
++    for( unsigned int ii = 0; ii < glyphCount; ++ii )
++    {
++        // a fallback face's glyph is not in this font's file: it plots as .notdef
++        uint32_t glyphIndex = glyphs[ii].gl_Face == 0 ? glyphs[ii].gl_Glyph : 0;
++
++        size_t clusterStart = glyphs[ii].gl_Cluster;
++        size_t clusterEnd = ( ii + 1 < glyphCount ) ? glyphs[ii + 1].gl_Cluster : textUtf8.size();
++
++        if( clusterEnd < clusterStart )
++            std::swap( clusterStart, clusterEnd );
++
++        std::string clusterUtf8 = textUtf8.substr( clusterStart, clusterEnd - clusterStart );
++        std::u32string unicode = utf8ToU32( clusterUtf8 );
++
++        if( unicode.empty() )
++            unicode.push_back( 0 );
++
++        uint16_t cid = subset->EnsureGlyph( glyphIndex, unicode );
++
++        if( cid != 0 )
++            hasVisibleGlyph = true;
++
++        run.m_bytes.push_back( static_cast<char>( ( cid >> 8 ) & 0xFF ) );
++        run.m_bytes.push_back( static_cast<char>( cid & 0xFF ) );
++
++        PDF_OUTLINE_FONT_GLYPH glyph;
++        glyph.cid = cid;
++        glyph.xAdvance = unitsToPdf( glyphs[ii].gl_XAdvance / 64.0, subset->UnitsPerEm() );
++        glyph.yAdvance = unitsToPdf( glyphs[ii].gl_YAdvance / 64.0, subset->UnitsPerEm() );
++        glyph.xOffset = unitsToPdf( glyphs[ii].gl_XOffset / 64.0, subset->UnitsPerEm() );
++        glyph.yOffset = unitsToPdf( glyphs[ii].gl_YOffset / 64.0, subset->UnitsPerEm() );
++        run.m_glyphs.push_back( glyph );
++    }
++#else
+     hb_buffer_t* buffer = hb_buffer_create();
+     hb_buffer_set_cluster_level( buffer, HB_BUFFER_CLUSTER_LEVEL_MONOTONE_GRAPHEMES );
+     hb_buffer_add_utf8( buffer, textUtf8.c_str(), (int) textUtf8.size(), 0, (int) textUtf8.size() );
+@@ -566,6 +706,7 @@ void PDF_OUTLINE_FONT_MANAGER::EncodeString( const wxString& aText, KIFONT::OUTL
+     }
+ 
+     hb_buffer_destroy( buffer );
++#endif
+ 
+     if( hasVisibleGlyph && !run.m_bytes.empty() )
+         aRuns->push_back( std::move( run ) );
+diff --git a/common/single_top.cpp b/common/single_top.cpp
+index 47e07280..4b36202a 100644
+--- a/common/single_top.cpp
++++ b/common/single_top.cpp
+@@ -34,7 +34,13 @@
+ */
+ 
+ 
++#ifdef KICAD_AMIGA
++// AmigaOS has no dynamic loading: the program is linked with its kiface
++#undef BUILD_KIWAY_DLL
++#endif
++
+ #include <typeinfo>
++#include <wx/app.h>
+ #include <wx/cmdline.h>
+ #include <wx/dialog.h>
+ #include <wx/filename.h>
+diff --git a/common/singleton.cpp b/common/singleton.cpp
+index df61f3ca..1d58e28f 100644
+--- a/common/singleton.cpp
++++ b/common/singleton.cpp
+@@ -59,6 +59,7 @@ void KICAD_SINGLETON::Init()
+ {
+     int num_threads = std::max( 0, ADVANCED_CFG::GetCfg().m_MaximumThreads );
+ 
++#ifdef BS_THREAD_POOL_NATIVE_EXTENSIONS
+     m_ThreadPool = new BS::priority_thread_pool( num_threads,
+                                                  []
+                                                  {
+@@ -66,6 +67,10 @@ void KICAD_SINGLETON::Init()
+                                                      BS::this_thread::set_os_thread_priority(
+                                                              BS::os_thread_priority::below_normal );
+                                                  } );
++#else
++    // bs_thread_pool has no native thread priorities on this system
++    m_ThreadPool = new BS::priority_thread_pool( num_threads );
++#endif
+ 
+     m_GLContextManager = new GL_CONTEXT_MANAGER();
+ }
+diff --git a/common/widgets/grid_checkbox.cpp b/common/widgets/grid_checkbox.cpp
+index 9478e2db..fe1c4116 100644
+--- a/common/widgets/grid_checkbox.cpp
++++ b/common/widgets/grid_checkbox.cpp
+@@ -36,6 +36,11 @@
+ // the space between the cell edge and the checkbox mark
+ const int GRID_CELL_CHECKBOX_MARGIN = 2;
+ 
++#ifdef KICAD_AMIGA
++// the GFOpenWX Toolkit exports its own; keep KiCad's copy apart
++#define wxGetContentRect kicad_wxGetContentRect
++#endif
++
+ wxRect
+ wxGetContentRect(wxSize contentSize,
+                  const wxRect& cellRect,
+diff --git a/common/widgets/wx_aui_art_providers.cpp b/common/widgets/wx_aui_art_providers.cpp
+index c23c3b13..88d46f45 100644
+--- a/common/widgets/wx_aui_art_providers.cpp
++++ b/common/widgets/wx_aui_art_providers.cpp
+@@ -17,6 +17,7 @@
+  * with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
++#include <wx/menu.h>
+ #include <wx/aui/aui.h>
+ #include <wx/aui/framemanager.h>
+ #include <wx/aui/auibook.h>
+diff --git a/cvpcb/CMakeLists.txt b/cvpcb/CMakeLists.txt
+index 7bfb46a8..c42a4cae 100644
+--- a/cvpcb/CMakeLists.txt
++++ b/cvpcb/CMakeLists.txt
+@@ -56,7 +56,7 @@ endif()
+ 
+ 
+ # the main cvpcb program, in DSO form.
+-add_library( cvpcb_kiface MODULE
++add_library( cvpcb_kiface ${KICAD_KIFACE_TYPE}
+     cvpcb.cpp
+     ${CVPCB_SRCS}
+     ${CVPCB_DIALOGS}
+diff --git a/eeschema/CMakeLists.txt b/eeschema/CMakeLists.txt
+index 7b853e62..4960b65a 100644
+--- a/eeschema/CMakeLists.txt
++++ b/eeschema/CMakeLists.txt
+@@ -637,7 +637,7 @@ target_link_libraries( eeschema_kiface_objects PUBLIC eeschema_navlib)
+ 
+ add_dependencies( eeschema_kiface_objects eeschema_navlib )
+ 
+-add_library( eeschema_kiface MODULE
++add_library( eeschema_kiface ${KICAD_KIFACE_TYPE}
+     eeschema.cpp
+     )
+ 
+diff --git a/eeschema/sch_io/database/sch_io_database.cpp b/eeschema/sch_io/database/sch_io_database.cpp
+index ef973069..bd7b0eaa 100644
+--- a/eeschema/sch_io/database/sch_io_database.cpp
++++ b/eeschema/sch_io/database/sch_io_database.cpp
+@@ -479,7 +479,9 @@ void SCH_IO_DATABASE::stopBackgroundRefresh()
+ 
+ void SCH_IO_DATABASE::backgroundRefreshWorker()
+ {
++#ifdef BS_THREAD_POOL_NATIVE_EXTENSIONS
+     BS::this_thread::set_os_thread_name( "dblib bg" );
++#endif
+ 
+     while( m_refreshRunning.load() )
+     {
+diff --git a/eeschema/sch_io/http_lib/sch_io_http_lib.cpp b/eeschema/sch_io/http_lib/sch_io_http_lib.cpp
+index 09fb5e16..02bce0ec 100644
+--- a/eeschema/sch_io/http_lib/sch_io_http_lib.cpp
++++ b/eeschema/sch_io/http_lib/sch_io_http_lib.cpp
+@@ -97,7 +97,9 @@ void SCH_IO_HTTP_LIB::startBackgroundRefresh()
+ 
+ void SCH_IO_HTTP_LIB::backgroundRefreshWorker()
+ {
++#ifdef BS_THREAD_POOL_NATIVE_EXTENSIONS
+     BS::this_thread::set_os_thread_name( "httplib bg" );
++#endif
+ 
+     while( m_refreshRunning.load() )
+     {
+diff --git a/gerbview/CMakeLists.txt b/gerbview/CMakeLists.txt
+index aa7c32eb..fb5f0bb7 100644
+--- a/gerbview/CMakeLists.txt
++++ b/gerbview/CMakeLists.txt
+@@ -144,7 +144,7 @@ target_link_libraries( gerbview_kiface_objects PUBLIC gerbview_navlib)
+ add_dependencies( gerbview_kiface_objects gerbview_navlib )
+ 
+ # the main gerbview program, in DSO form.
+-add_library( gerbview_kiface MODULE )
++add_library( gerbview_kiface ${KICAD_KIFACE_TYPE} )
+ 
+ set_target_properties( gerbview_kiface PROPERTIES
+     OUTPUT_NAME     gerbview
+diff --git a/include/font/fontconfig.h b/include/font/fontconfig.h
+index d434d8d5..00766124 100644
+--- a/include/font/fontconfig.h
++++ b/include/font/fontconfig.h
+@@ -1,3 +1,7 @@
++/* Amiga: the gfopenfont.library version lives in amiga/include */
++#ifdef KICAD_AMIGA
++#include "../../amiga/include/font/fontconfig.h"
++#else
+ /*
+  * This program source code file is part of KiCad, a free EDA CAD application.
+  *
+@@ -144,3 +148,4 @@ KICOMMON_API fontconfig::FONTCONFIG* Fontconfig();
+ 
+ 
+ #endif //KICAD_FONTCONFIG_H
++#endif // KICAD_AMIGA
+diff --git a/include/font/outline_decomposer.h b/include/font/outline_decomposer.h
+index 43910c98..eb470cf6 100644
+--- a/include/font/outline_decomposer.h
++++ b/include/font/outline_decomposer.h
+@@ -1,3 +1,7 @@
++/* Amiga: the gfopenfont.library version lives in amiga/include */
++#ifdef KICAD_AMIGA
++#include "../../amiga/include/font/outline_decomposer.h"
++#else
+ /*
+  * This program source code file is part of KICAD, a free EDA CAD application.
+  *
+@@ -130,3 +134,4 @@ private:
+ } //namespace KIFONT
+ 
+ #endif      // OUTLINE_DECOMPOSER_H
++#endif // KICAD_AMIGA
+diff --git a/include/font/outline_font.h b/include/font/outline_font.h
+index 2df163dc..9b7ae4c8 100644
+--- a/include/font/outline_font.h
++++ b/include/font/outline_font.h
+@@ -1,3 +1,7 @@
++/* Amiga: the gfopenfont.library version lives in amiga/include */
++#ifdef KICAD_AMIGA
++#include "../../amiga/include/font/outline_font.h"
++#else
+ /*
+  * This program source code file is part of KICAD, a free EDA CAD application.
+  *
+@@ -230,3 +234,4 @@ private:
+ } //namespace KIFONT
+ 
+ #endif // OUTLINE_FONT_H_
++#endif // KICAD_AMIGA
+diff --git a/include/gal/cairo/cairo_compositor.h b/include/gal/cairo/cairo_compositor.h
+index b0d26a4a..06dd34bb 100644
+--- a/include/gal/cairo/cairo_compositor.h
++++ b/include/gal/cairo/cairo_compositor.h
+@@ -1,3 +1,7 @@
++/* Amiga: the gfopengpu.library version lives in amiga/include */
++#ifdef KICAD_AMIGA
++#include "../../../amiga/include/gal/cairo/cairo_compositor.h"
++#else
+ /*
+  * This program source code file is part of KiCad, a free EDA CAD application.
+  *
+@@ -157,3 +161,4 @@ protected:
+ } // namespace KIGFX
+ 
+ #endif /* COMPOSITOR_H_ */
++#endif // KICAD_AMIGA
+diff --git a/include/gal/cairo/cairo_gal.h b/include/gal/cairo/cairo_gal.h
+index 8b7d0226..8d71fea5 100644
+--- a/include/gal/cairo/cairo_gal.h
++++ b/include/gal/cairo/cairo_gal.h
+@@ -1,3 +1,7 @@
++/* Amiga: the gfopengpu.library version lives in amiga/include */
++#ifdef KICAD_AMIGA
++#include "../../../amiga/include/gal/cairo/cairo_gal.h"
++#else
+ /*
+  * This program source code file is part of KICAD, a free EDA CAD application.
+  *
+@@ -533,3 +537,4 @@ protected:
+ } // namespace KIGFX
+ 
+ #endif  // CAIROGAL_H_
++#endif // KICAD_AMIGA
+diff --git a/include/gal/cairo/cairo_print.h b/include/gal/cairo/cairo_print.h
+index b5d189c9..44b42753 100644
+--- a/include/gal/cairo/cairo_print.h
++++ b/include/gal/cairo/cairo_print.h
+@@ -1,3 +1,7 @@
++/* Amiga: the gfopengpu.library version lives in amiga/include */
++#ifdef KICAD_AMIGA
++#include "../../../amiga/include/gal/cairo/cairo_print.h"
++#else
+ /*
+  * Copyright (C) 2018 CERN
+  * Copyright The KiCad Developers, see AUTHORS.txt for contributors.
+@@ -133,3 +137,4 @@ private:
+ } // namespace KIGFX
+ 
+ #endif /* _CAIRO_PRINT_H_ */
++#endif // KICAD_AMIGA
+diff --git a/include/kicad_curl/kicad_curl.h b/include/kicad_curl/kicad_curl.h
+index 9526e70f..d0b6fd80 100644
+--- a/include/kicad_curl/kicad_curl.h
++++ b/include/kicad_curl/kicad_curl.h
+@@ -43,6 +43,16 @@
+ 
+ #include <kicommon.h>
+ #include <curl/curl.h>
++#ifdef __amigaos__
++// curl brings in the NDK's exec/types.h, whose GLOBAL, IMPORT, STATIC and
++// REGISTER macros clash with KiCad's names
++#undef GLOBAL
++#undef IMPORT
++#undef STATIC
++#undef REGISTER
++#undef IsListEmpty
++#undef IsMsgPortEmpty
++#endif
+ #include <string>
+ #include <shared_mutex>
+ 
+diff --git a/include/kiway.h b/include/kiway.h
+index 1fd67a10..30b6db16 100644
+--- a/include/kiway.h
++++ b/include/kiway.h
+@@ -121,6 +121,8 @@
+  #define LIB_ENV_VAR    wxT( "DYLD_LIBRARY_PATH" )
+ #elif defined(_WIN32)
+  #define LIB_ENV_VAR    wxT( "PATH" )
++#elif defined(__amigaos__)
++ #define LIB_ENV_VAR    wxT( "LIBS" )   // kifaces are linked in; never searched
+ #else
+  #error Platform support missing
+ #endif
+diff --git a/include/tool/coroutine.h b/include/tool/coroutine.h
+index 2873b07b..61fde7b8 100644
+--- a/include/tool/coroutine.h
++++ b/include/tool/coroutine.h
+@@ -52,6 +52,8 @@
+ 
+ #ifdef _WIN32
+ #include <windows.h>
++#elif defined( __amigaos__ )
++#include <cstdlib>      // malloc, free: coroutine stacks
+ #else                   // Linux, BSD, MacOS
+ #include <unistd.h>     // getpagesize
+ #include <sys/mman.h>   // mmap, mprotect, munmap
+@@ -449,6 +451,10 @@ private:
+ #ifdef _WIN32
+         void SetSize( std::size_t ) {}
+         void operator()( void* aMem ) noexcept { ::VirtualFree( aMem, 0, MEM_RELEASE ); }
++#elif defined( __amigaos__ )
++        // AmigaOS has one address space and no mmap: stacks come from the heap
++        void SetSize( std::size_t ) {}
++        void operator()( void* aMem ) noexcept { ::free( aMem ); }
+ #else
+         std::size_t m_size = 0;
+ 
+@@ -468,6 +474,8 @@ private:
+             SYSTEM_INFO si;
+             ::GetSystemInfo( &si );
+             systemPageSize = static_cast<size_t>( si.dwPageSize );
++#elif defined( __amigaos__ )
++            systemPageSize = static_cast<size_t>( 4096 );
+ #else
+             int size = getpagesize();
+             systemPageSize = static_cast<size_t>( size );
+@@ -483,6 +491,11 @@ private:
+ #ifdef _WIN32
+         void* mem = ::VirtualAlloc( 0, aAllocSize, MEM_COMMIT, PAGE_READWRITE );
+ 
++        if( !mem )
++            throw std::bad_alloc();
++#elif defined( __amigaos__ )
++        void* mem = ::malloc( aAllocSize );
++
+         if( !mem )
+             throw std::bad_alloc();
+ #else
+@@ -501,6 +514,11 @@ private:
+         DWORD old_prot; // dummy var since the arg cannot be NULL
+         BOOL res = ::VirtualProtect( aAddress, aGuardSize,
+                                     PAGE_READWRITE | PAGE_GUARD, &old_prot );
++#elif defined( __amigaos__ )
++        // no memory protection on the 68k Amiga: the guard page is left as it is
++        bool res = true;
++        (void) aAddress;
++        (void) aGuardSize;
+ #else
+         bool res = ( 0 == ::mprotect( aAddress, aGuardSize, PROT_NONE ) );
+ #endif
+diff --git a/kicad/dialogs/dialog_template_selector.cpp b/kicad/dialogs/dialog_template_selector.cpp
+index d39b00bd..c9aca562 100644
+--- a/kicad/dialogs/dialog_template_selector.cpp
++++ b/kicad/dialogs/dialog_template_selector.cpp
+@@ -22,6 +22,7 @@
+  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
+ 
++#include <wx/log.h>
+ #include "dialog_template_selector.h"
+ #include <bitmaps.h>
+ #include <kiplatform/environment.h>
+diff --git a/libs/kiplatform/CMakeLists.txt b/libs/kiplatform/CMakeLists.txt
+index 5d8dd529..241339ce 100644
+--- a/libs/kiplatform/CMakeLists.txt
++++ b/libs/kiplatform/CMakeLists.txt
+@@ -11,6 +11,12 @@ elseif( KICAD_WX_PORT STREQUAL msw )
+         port/wxmsw/ui.cpp
+         port/wxmsw/webview.cpp
+         )
++elseif( KICAD_WX_PORT STREQUAL openlayout )
++    # AmigaOS 3: the files are gfamigakicad's, in amiga/kiplatform
++    set( PLATFORM_SRCS
++        ${CMAKE_SOURCE_DIR}/amiga/kiplatform/port/wxopenlayout/ui.cpp
++        ${CMAKE_SOURCE_DIR}/amiga/kiplatform/port/wxopenlayout/webview.cpp
++        )
+ elseif( KICAD_WX_PORT STREQUAL gtk )
+     set( PLATFORM_SRCS
+         port/wxgtk/ui.cpp
+@@ -72,6 +78,17 @@ elseif( WIN32 )
+         "imm32"
+         "windowsapp"
+         )
++elseif( KICAD_AMIGA )
++    list( APPEND PLATFORM_SRCS
++        ${CMAKE_SOURCE_DIR}/amiga/kiplatform/os/amiga/app.cpp
++        ${CMAKE_SOURCE_DIR}/amiga/kiplatform/os/amiga/drivers.cpp
++        ${CMAKE_SOURCE_DIR}/amiga/kiplatform/os/amiga/environment.cpp
++        ${CMAKE_SOURCE_DIR}/amiga/kiplatform/os/amiga/io.cpp
++        ${CMAKE_SOURCE_DIR}/amiga/kiplatform/os/amiga/policy.cpp
++        ${CMAKE_SOURCE_DIR}/amiga/kiplatform/os/amiga/secrets.cpp
++        ${CMAKE_SOURCE_DIR}/amiga/kiplatform/os/amiga/sysinfo.cpp
++        ${CMAKE_SOURCE_DIR}/amiga/kiplatform/os/amiga/printing.cpp
++        )
+ elseif( UNIX )
+     list( APPEND PLATFORM_SRCS
+         os/unix/app.cpp
+diff --git a/libs/kiplatform/include/kiplatform/sysinfo.h b/libs/kiplatform/include/kiplatform/sysinfo.h
+index bbe78c3c..29792057 100644
+--- a/libs/kiplatform/include/kiplatform/sysinfo.h
++++ b/libs/kiplatform/include/kiplatform/sysinfo.h
+@@ -94,7 +94,7 @@ public:
+ 
+ #if defined( _WIN32 )
+ #include <kiplatform/sysinfo_windows.h>
+-#elif defined( __unix__ ) || defined( __unix )
++#elif defined( __unix__ ) || defined( __unix ) || defined( __amigaos__ )
+ #include <kiplatform/sysinfo_gtk.h>
+ #elif defined( __APPLE__ )
+ #include <kiplatform/sysinfo_osx.h>
+diff --git a/libs/kiplatform/os/common/io.cpp b/libs/kiplatform/os/common/io.cpp
+index 68928f4e..1c34d3db 100644
+--- a/libs/kiplatform/os/common/io.cpp
++++ b/libs/kiplatform/os/common/io.cpp
+@@ -121,6 +121,40 @@ FILE* KIPLATFORM::IO::OpenUniqueSiblingTempFile( const wxString& aTargetPath, co
+ }
+ 
+ 
++#if defined( __amigaos__ )
++// AmigaOS: soft links are rare and libnix has no lstat()/realpath(); a
++// folder needs no flush (AmigaDOS writes it with the file); and rename()
++// will not replace a file, so the old one is deleted first (not atomic:
++// CommitTempFile's temporary copy is the fallback if the program stops
++// between the two).
++wxString KIPLATFORM::IO::ResolveSymlinkTarget( const wxString& aPath )
++{
++    return aPath;
++}
++
++
++bool KIPLATFORM::IO::FlushDirectory( const wxString& )
++{
++    return true;
++}
++
++
++bool KIPLATFORM::IO::AtomicRename( const wxString& aSrc, const wxString& aDst, wxString* aError )
++{
++    if( rename( aSrc.fn_str(), aDst.fn_str() ) == 0 )
++        return true;
++
++    if( wxFileName::FileExists( aDst ) && remove( aDst.fn_str() ) == 0
++            && rename( aSrc.fn_str(), aDst.fn_str() ) == 0 )
++        return true;
++
++    if( aError )
++        *aError = wxString::FromUTF8( strerror( errno ) );
++
++    return false;
++}
++
++#else
+ wxString KIPLATFORM::IO::ResolveSymlinkTarget( const wxString& aPath )
+ {
+     // Users commonly symlink shared config/project files into their working directory.
+@@ -174,6 +208,8 @@ bool KIPLATFORM::IO::AtomicRename( const wxString& aSrc, const wxString& aDst, w
+     return false;
+ }
+ 
++#endif // __amigaos__
++
+ #endif // !_WIN32
+ 
+ 
+diff --git a/pagelayout_editor/CMakeLists.txt b/pagelayout_editor/CMakeLists.txt
+index f287e536..04624b50 100644
+--- a/pagelayout_editor/CMakeLists.txt
++++ b/pagelayout_editor/CMakeLists.txt
+@@ -90,7 +90,7 @@ target_link_options( pl_editor PRIVATE
+     )
+ 
+ # the main pl_editor program, in DSO form.
+-add_library( pl_editor_kiface MODULE
++add_library( pl_editor_kiface ${KICAD_KIFACE_TYPE}
+     pl_editor.cpp
+     ${PL_EDITOR_SRCS}
+     ${DIALOGS_SRCS}
+diff --git a/pcb_calculator/CMakeLists.txt b/pcb_calculator/CMakeLists.txt
+index 915e4d70..cc966183 100644
+--- a/pcb_calculator/CMakeLists.txt
++++ b/pcb_calculator/CMakeLists.txt
+@@ -104,7 +104,7 @@ target_link_options( pcb_calculator PRIVATE
+     )
+ 
+ # the main pcb_calculator program, in DSO form.
+-add_library( pcb_calculator_kiface MODULE
++add_library( pcb_calculator_kiface ${KICAD_KIFACE_TYPE}
+     pcb_calculator.cpp
+     ${PCB_CALCULATOR_SRCS}
+     )
+diff --git a/pcbnew/CMakeLists.txt b/pcbnew/CMakeLists.txt
+index 276772bb..3bf0ec11 100644
+--- a/pcbnew/CMakeLists.txt
++++ b/pcbnew/CMakeLists.txt
+@@ -279,6 +279,12 @@ set( PCBNEW_EXPORTERS
+     exporters/gerber_placefile_writer.cpp
+     )
+ 
++if( KICAD_AMIGA )
++    # no OpenCASCADE yet: 3D model export reports that it is not available
++    list( FILTER PCBNEW_EXPORTERS EXCLUDE REGEX "exporters/(step|u3d)/" )
++    list( APPEND PCBNEW_EXPORTERS ${CMAKE_SOURCE_DIR}/amiga/exporter_step_none.cpp )
++endif()
++
+ set( PCBNEW_MICROWAVE_SRCS
+     microwave/microwave_footprint.cpp
+     microwave/microwave_inductor.cpp
+@@ -548,8 +554,15 @@ if( CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
+     endif()
+ endif()
+ 
++if( KICAD_AMIGA )
++    # no Python on AmigaOS yet: no SWIG wrapper, action plugins or wizards
++    set( PCBNEW_SCRIPTING_PYTHON_HELPERS
++        python/scripting/pcbnew_scripting_helpers.cpp
++        ${CMAKE_SOURCE_DIR}/amiga/pcbnew/scripting_none.cpp )
++endif()
++
+ set( PCBNEW_SCRIPTING_SRCS
+-    pcbnew_wrap.cxx
++    $<$<NOT:$<BOOL:${KICAD_AMIGA}>>:pcbnew_wrap.cxx>
+     ${PCBNEW_SCRIPTING_PYTHON_HELPERS}
+     )
+ 
+@@ -615,7 +628,7 @@ add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/pcb
+     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+     )
+ 
+-if( UNIX AND NOT APPLE )
++if( UNIX AND NOT APPLE AND NOT KICAD_AMIGA )
+     list( APPEND PCBNEW_EXTRA_LIBS rt )
+ endif()
+ 
+@@ -852,7 +865,7 @@ target_link_libraries( pcbnew_kiface_objects
+         ${OCC_LIBRARIES}
+     )
+ 
+-add_library( pcbnew_kiface MODULE
++add_library( pcbnew_kiface ${KICAD_KIFACE_TYPE}
+     pcbnew.cpp
+     )
+ 
+diff --git a/pcbnew/board_item.cpp b/pcbnew/board_item.cpp
+index 76830a09..223d99d1 100644
+--- a/pcbnew/board_item.cpp
++++ b/pcbnew/board_item.cpp
+@@ -23,7 +23,9 @@
+  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
+ 
++#ifndef KICAD_AMIGA
+ #include <pybind11/pybind11.h>
++#endif
+ 
+ #include <wx/debug.h>
+ #include <wx/msgdlg.h>
+diff --git a/pcbnew/pcbnew.cpp b/pcbnew/pcbnew.cpp
+index 81ad2eec..0a19f34d 100644
+--- a/pcbnew/pcbnew.cpp
++++ b/pcbnew/pcbnew.cpp
+@@ -546,7 +546,11 @@ static struct IFACE : public KIFACE_BASE, public UNITS_PROVIDER
+         }
+ 
+         case KIFACE_SCRIPTING_LEGACY:
++#ifdef KICAD_AMIGA
++            return nullptr; // no Python on AmigaOS yet
++#else
+             return reinterpret_cast<void*>( PyInit__pcbnew );
++#endif
+ 
+         default:
+             return nullptr;
+diff --git a/pcbnew/pcbnew_settings.cpp b/pcbnew/pcbnew_settings.cpp
+index 1a812adb..fc410311 100644
+--- a/pcbnew/pcbnew_settings.cpp
++++ b/pcbnew/pcbnew_settings.cpp
+@@ -21,7 +21,9 @@
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ */
+ 
++#ifndef KICAD_AMIGA
+ #include <pybind11/pybind11.h>
++#endif
+ 
+ #include <common.h>
+ #include <settings/color_settings.h>
+diff --git a/pcbnew/python/scripting/pcbnew_scripting_helpers.cpp b/pcbnew/python/scripting/pcbnew_scripting_helpers.cpp
+index c7912eec..9b487358 100644
+--- a/pcbnew/python/scripting/pcbnew_scripting_helpers.cpp
++++ b/pcbnew/python/scripting/pcbnew_scripting_helpers.cpp
+@@ -27,7 +27,9 @@
+  * @brief Scripting helper functions for pcbnew functionality
+  */
+ 
++#ifndef KICAD_AMIGA
+ #include <Python.h>
++#endif
+ #undef HAVE_CLOCK_GETTIME  // macro is defined in Python.h and causes redefine warning
+ 
+ #include "pcbnew_scripting_helpers.h"
+diff --git a/plugins/CMakeLists.txt b/plugins/CMakeLists.txt
+index 9f8782aa..be4f994d 100644
+--- a/plugins/CMakeLists.txt
++++ b/plugins/CMakeLists.txt
+@@ -9,4 +9,8 @@ include_directories(
+         ${CMAKE_SOURCE_DIR}/3d-viewer
+ )
+ 
+-add_subdirectory( 3d )
++if( NOT KICAD_AMIGA )
++    # model readers are loaded at run time; AmigaOS builds have no dlopen
++    # and no OpenCASCADE yet
++    add_subdirectory( 3d )
++endif()
+diff --git a/resources/CMakeLists.txt b/resources/CMakeLists.txt
+index 38414e92..ddc79ba8 100644
+--- a/resources/CMakeLists.txt
++++ b/resources/CMakeLists.txt
+@@ -4,7 +4,7 @@
+ if( APPLE )
+     #TODO Generate this at runtime as well
+     include( ${KICAD_CMAKE_MODULE_PATH}/WritePlatformMetadata_macos.cmake )
+-elseif( UNIX )
++elseif( UNIX AND NOT KICAD_AMIGA )
+     include( ${KICAD_CMAKE_MODULE_PATH}/KiCadAppNames.cmake )
+ 
+     # Add the command to configure the linux metainfo file with the version information
+diff --git a/scripting/CMakeLists.txt b/scripting/CMakeLists.txt
+index 5ec2face..e76abd02 100644
+--- a/scripting/CMakeLists.txt
++++ b/scripting/CMakeLists.txt
+@@ -27,6 +27,10 @@ target_include_directories( scripting PRIVATE
+     ${wxWidgets_LIBRARIES}
+ )
+ 
++if( KICAD_AMIGA )
++    return()    # no Python on AmigaOS yet: no scripting console kiface
++endif()
++
+ # Setup the KIFACE
+ add_library( scripting_kiface MODULE
+     kicad_scripting_main.cpp
+diff --git a/scripting/python_scripting.h b/scripting/python_scripting.h
+index 2eb702e7..5b519d52 100644
+--- a/scripting/python_scripting.h
++++ b/scripting/python_scripting.h
+@@ -37,9 +37,18 @@
+     #undef pid_t    // wxWidgets defines this, python typedefs, result is a conflict
+ #endif
+ 
++#ifdef KICAD_AMIGA
++// No Python on AmigaOS yet: the types stay opaque and nothing calls into them
++struct _object;
++typedef struct _object PyObject;
++struct _ts;
++typedef struct _ts PyThreadState;
++typedef int PyGILState_STATE;
++#else
+ #undef HAVE_CLOCK_GETTIME  // macro is defined in Python.h and causes redefine warning
+ #include <Python.h>
+ #undef HAVE_CLOCK_GETTIME
++#endif
+ 
+ #include <wx/window.h>
+ #include <wx/string.h>
+@@ -96,8 +105,13 @@ class KICOMMON_API PyLOCK
+ {
+     PyGILState_STATE gil_state;
+ public:
++#ifdef KICAD_AMIGA
++    PyLOCK()      { gil_state = 0; }
++    ~PyLOCK()     {}
++#else
+     PyLOCK()      { gil_state = PyGILState_Ensure(); }
+     ~PyLOCK()     { PyGILState_Release( gil_state ); }
++#endif
+ };
+ 
+ KICOMMON_API wxString PyStringToWx( PyObject* str );
+diff --git a/thirdparty/CMakeLists.txt b/thirdparty/CMakeLists.txt
+index 365195a9..cd824d9e 100644
+--- a/thirdparty/CMakeLists.txt
++++ b/thirdparty/CMakeLists.txt
+@@ -58,7 +58,9 @@ add_subdirectory( libpopcnt )
+ add_subdirectory( magic_enum )
+ add_subdirectory( markdown2html )
+ add_subdirectory( nanoflann )
+-add_subdirectory( nanodbc )
++if( NOT KICAD_AMIGA )
++    add_subdirectory( nanodbc )
++endif()
+ add_subdirectory( nanosvg )
+ add_subdirectory( rectpack2d )
+ add_subdirectory( rtree )
+diff --git a/thirdparty/glad/CMakeLists.txt b/thirdparty/glad/CMakeLists.txt
+index a5d58072..745d76e8 100644
+--- a/thirdparty/glad/CMakeLists.txt
++++ b/thirdparty/glad/CMakeLists.txt
+@@ -6,7 +6,7 @@ set(GLAD_SOURCES
+ 
+ if(WIN32)
+ 	list(APPEND GLAD_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/wgl.c)
+-elseif(UNIX AND NOT APPLE)
++elseif(UNIX AND NOT APPLE AND NOT KICAD_AMIGA)
+ 	if(wxWidgets_HAS_GLX EQUAL 1 OR wxWidgets_HAS_EGL EQUAL 1)
+ 		# wx 3.3.2+ macros
+ 		if(wxWidgets_HAS_EGL EQUAL 1)
+diff --git a/thirdparty/lemon/CMakeLists.txt b/thirdparty/lemon/CMakeLists.txt
+index 12c97d2f..724b4690 100644
+--- a/thirdparty/lemon/CMakeLists.txt
++++ b/thirdparty/lemon/CMakeLists.txt
+@@ -1,6 +1,12 @@
+-add_executable( lemon
+-    lemon.c
+-    )
++if( CMAKE_CROSSCOMPILING AND KICAD_HOST_LEMON )
++    # lemon runs at build time, so a cross build takes one built for the host
++    add_executable( lemon IMPORTED GLOBAL )
++    set_property( TARGET lemon PROPERTY IMPORTED_LOCATION ${KICAD_HOST_LEMON} )
++else()
++    add_executable( lemon
++        lemon.c
++        )
++endif()
+ 
+ # The location of the template file for lemon is passed as a property on the lemon target
+ define_property( TARGET
+diff --git a/thirdparty/nanosvg/nanosvg.h b/thirdparty/nanosvg/nanosvg.h
+index a6a659bc..46ddb325 100644
+--- a/thirdparty/nanosvg/nanosvg.h
++++ b/thirdparty/nanosvg/nanosvg.h
+@@ -26,6 +26,17 @@
+  *
+  */
+ 
++#ifdef KICAD_AMIGA
++// the GFOpenWX Toolkit links its own nanosvg (wxBitmapBundle's SVG): KiCad's
++// copy, which differs from it, gets names of its own
++#define nsvgParse          kicad_nsvgParse
++#define nsvgParseFromFile  kicad_nsvgParseFromFile
++#define nsvgDelete         kicad_nsvgDelete
++#define nsvgDuplicatePath  kicad_nsvgDuplicatePath
++#define nsvg__parseXML     kicad_nsvg__parseXML
++#define nsvg__colors       kicad_nsvg__colors
++#endif
++
+ #ifndef NANOSVG_H
+ #define NANOSVG_H
+ 
+diff --git a/thirdparty/rapidcsv/rapidcsv/rapidcsv.h b/thirdparty/rapidcsv/rapidcsv/rapidcsv.h
+index 19391b01..1c31a9d6 100644
+--- a/thirdparty/rapidcsv/rapidcsv/rapidcsv.h
++++ b/thirdparty/rapidcsv/rapidcsv/rapidcsv.h
+@@ -232,7 +232,12 @@
+            }
+            else if (typeid(T) == typeid(long double))
+            {
++#if defined(__amigaos__)
++             // libnix has no strtold, so libstdc++ has no std::stold(string)
++             pVal = static_cast<T>(std::stod(pStr));
++#else
+              pVal = static_cast<T>(std::stold(pStr));
++#endif
+              return;
+            }
+          }
+diff --git a/utils/idftools/CMakeLists.txt b/utils/idftools/CMakeLists.txt
+index 3aa33ecc..29fc4c7e 100644
+--- a/utils/idftools/CMakeLists.txt
++++ b/utils/idftools/CMakeLists.txt
+@@ -23,6 +23,11 @@ target_link_libraries( idf3
+     Boost::headers
+     )
+ 
++if( KICAD_AMIGA )
++    # pcbnew's IDF export needs only the library; the tools stay for later
++    return()
++endif()
++
+ add_executable( idfcyl idf_cylinder.cpp )
+ add_executable( idfrect idf_rect.cpp )
+ add_executable( dxf2idf dxf2idfmain.cpp dxf2idf.cpp )
