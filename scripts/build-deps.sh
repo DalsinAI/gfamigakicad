@@ -85,6 +85,11 @@ fi
 export KC_NDK="$NDK"
 log "NDK: $NDK"
 
+# ---- zlib's calls on the system's z.library (no zlib of our own): libz.a
+# and our zlib.h, for KiCad, libgit2 and the toolkit's streams alike
+$CC $OPT -isystem "$NDK" -I"$HERE/compat/include" -c -o "$WORK/obj/compat/gfamiga_zlib.o" "$HERE/compat/src/gfamiga_zlib.c"
+rm -f "$DEPS/lib/libz.a"; $AR rcs "$DEPS/lib/libz.a" "$WORK/obj/compat/gfamiga_zlib.o"
+
 # ---- zstd: libzstd.a
 if ! done_for zstd "$ZSTD_SHA256"; then
     S=$(unpack "$(fetch zstd "$ZSTD_URL" "$ZSTD_SHA256")")
@@ -160,18 +165,18 @@ if ! done_for protobuf "$PROTOBUF_SHA256"; then
 fi
 
 # ---- libgit2: local repositories only (no HTTPS, no SSH)
-if ! done_for libgit2 "$LIBGIT2_COMMIT-o2"; then
+if ! done_for libgit2 "$LIBGIT2_COMMIT-o3"; then
     S=$(gitfetch libgit2 "$LIBGIT2_REPO" "$LIBGIT2_COMMIT"); patch_tree libgit2 "$S"
     cmake -S "$S" -B "$WORK/obj/libgit2" -G Ninja -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
         -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS_RELEASE="-O2 -DNO_MMAP" -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF -DCMAKE_C_STANDARD=99 -DCMAKE_C_EXTENSIONS=ON \
         -DBUILD_CLI=OFF -DUSE_HTTPS=OFF -DUSE_SSH=OFF -DUSE_GSSAPI=OFF -DUSE_NTLMCLIENT=OFF \
-        -DREGEX_BACKEND=builtin -DUSE_HTTP_PARSER=builtin -DUSE_BUNDLED_ZLIB=ON -DUSE_THREADS=ON \
+        -DREGEX_BACKEND=builtin -DUSE_HTTP_PARSER=builtin -DUSE_BUNDLED_ZLIB=OFF -DZLIB_INCLUDE_DIR="$DEPS/include" -DZLIB_LIBRARY="$DEPS/lib/libz.a" -DUSE_THREADS=ON \
         -DUSE_SHA1=CollisionDetection -DUSE_SHA256=Builtin -DUSE_ICONV=OFF -DUSE_NSEC=OFF \
         -DGIT_QSORT_GNU=0 -DGIT_RAND_GETENTROPY=0 -DGIT_IO_POLL=0 \
         -DCMAKE_INSTALL_PREFIX="$DEPS" >/dev/null
     cmake --build "$WORK/obj/libgit2" -j"$JOBS" >/dev/null
     cmake --install "$WORK/obj/libgit2" >/dev/null
-    mark libgit2 "$LIBGIT2_COMMIT-o2"; log "libgit2 done"
+    mark libgit2 "$LIBGIT2_COMMIT-o3"; log "libgit2 done"
 fi
 
 log "all done: $(ls "$DEPS/lib" | tr '\n' ' ')"

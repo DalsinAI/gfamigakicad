@@ -43,27 +43,27 @@ fi
 WXSDK="$WX/out/sdk"; WXSRC=$(ls -d "$WX"/wxWidgets-* | head -1)
 [ "$(left)" -gt 120 ] || again
 
-# ---- Boost.Locale, protobuf, libgit2, zstd, GLM and the host tools
+# ---- Boost.Locale, protobuf, libgit2, zstd, GLM, zlib on z.library and the host tools
 step "dependencies"
 rc=0; TC="$TC" WORK="$WORK" timeout "$(left)" sh "$HERE/scripts/build-deps.sh" > "$WORK/deps.log" 2>&1 || rc=$?
 [ "$rc" = 124 ] && again
 [ "$rc" = 0 ] || { tail -30 "$WORK/deps.log"; exit 1; }
 [ "$(left)" -gt 120 ] || again
 
-# ---- the platform libraries, soft float, from the Team's ports
-step "platform libraries"
+# ---- libcurl (gfopencurl's build; everything else is the system's libraries)
+step "curl"
 NDK=
 [ -d "$TC/m68k-amigaos/ndk-include" ] || NDK="$WORK/src/opensdk/OpenNDK/Include_H"
-rc=0; TC="$TC" WORK="$WORK" WXSDK="$WXSDK" WXSRC="$WXSRC" NDK="$NDK" timeout "$(left)" \
-    sh "$HERE/scripts/build-platform-libs.sh" > "$WORK/platform.log" 2>&1 || rc=$?
+rc=0; TC="$TC" WORK="$WORK" DEPS="$WORK/deps" NDK="$NDK" timeout "$(left)" \
+    sh "$HERE/scripts/build-curl.sh" > "$WORK/curl.log" 2>&1 || rc=$?
 [ "$rc" = 124 ] && again
-[ "$rc" = 0 ] || { tail -30 "$WORK/platform.log"; exit 1; }
+[ "$rc" = 0 ] || { tail -30 "$WORK/curl.log"; exit 1; }
 [ "$(left)" -gt 120 ] || again
 
 # ---- KiCad, for what time is left
 step "kicad"
 rc=0
-TC="$TC" WORK="$WORK" WXSDK="$WXSDK" SYSLIBS="$WORK/platform" \
+TC="$TC" WORK="$WORK" WXSDK="$WXSDK" CURL="$WORK/curl" \
     timeout "$(( $(left) - 30 ))" sh "$HERE/scripts/build-kicad.sh" > "$WORK/kicad.log" 2>&1 || rc=$?
 grep -E '^FAILED|error:|undefined reference' "$WORK/kicad.log" | sort -u | head -60 || true
 tail -5 "$WORK/kicad.log"

@@ -1,17 +1,19 @@
 #!/bin/sh
 # Configures and builds KiCad for AmigaOS 3 (68040) with the libraries
-# build-deps.sh made, the GFOpenWX Toolkit SDK and the platform libraries.
-#   TC=<compiler prefix> WORK=<build folder> WXSDK=<toolkit sdk/> SYSLIBS=<prefix
-#   with cairo, pixman, freetype, harfbuzz, fontconfig, curl, zlib> ./build-kicad.sh [target...]
+# build-deps.sh made (zlib on z.library among them), the GFOpenWX Toolkit SDK
+# and build-curl.sh's libcurl. Fonts are gfopenfont.library's and the canvas
+# draws through gfopengpu.library, both opened at run time.
+#   TC=<compiler prefix> WORK=<build folder> WXSDK=<toolkit sdk/> CURL=<build-curl.sh's
+#   prefix> ./build-kicad.sh [target...]
 # Copyright (c) 2026 AmiCradle Team
 set -eu
 HERE=$(cd "$(dirname "$0")/.." && pwd)
 . "$HERE/deps.lock"
-TC=${TC:?}; WORK=${WORK:?}; WXSDK=${WXSDK:?}; SYSLIBS=${SYSLIBS:?}
+TC=${TC:?}; WORK=${WORK:?}; WXSDK=${WXSDK:?}; CURL=${CURL:?}
 DL=${DL:-$WORK/dl}; JOBS=${JOBS:-$(nproc)}
 DEPS=$WORK/deps; HOST=$WORK/host
 export PATH="$TC/bin:$HOST/bin:$PATH"
-export STOVE_PREFIX="$TC" DEPS_PREFIX="$DEPS" KC_ROOTS="$SYSLIBS;$WXSDK"
+export STOVE_PREFIX="$TC" DEPS_PREFIX="$DEPS" KC_ROOTS="$CURL;$DEPS;$WXSDK"
 
 # KiCad's source, unpacked and patched once for each set of patches
 f="$DL/kicad-$KICAD_VERSION.tar.gz"
@@ -47,10 +49,7 @@ if [ ! -f "$B/build.ninja" ] || [ "${RECONFIGURE:-0}" = 1 ]; then
         -DCMAKE_CXX_FLAGS_RELEASE="-O2 -DNDEBUG" -DCMAKE_C_FLAGS_RELEASE="-O2 -DNDEBUG" \
         -DCMAKE_PREFIX_PATH="/" \
         -DwxWidgets_CONFIG_EXECUTABLE="$WXSDK/bin/wx-config" \
-        -DKC_EXTRA_LIBS="-Wl,--start-group -L$SYSLIBS/lib -lcairo -lpixman-1 -lharfbuzz -lfontconfig -lexpat -lfreetype -lpng -lcurl -lnghttp2 -lz -Wl,--end-group" -DKICAD_AMIGA=ON -DKICAD_AMIGA_SDK_INCLUDE="$WORK/src/opensdk/Include" -DKICAD_WAYLAND=OFF -DKICAD_HOST_LEMON="$HOST/bin/lemon" \
-        -DCAIRO_INCLUDE_DIR="$SYSLIBS/include/cairo" -DCAIRO_LIBRARY="$SYSLIBS/lib/libcairo.a" \
-        -DPIXMAN_INCLUDE_DIR="$SYSLIBS/include/pixman-1" -DPIXMAN_LIBRARY="$SYSLIBS/lib/libpixman-1.a" \
-        -DFontconfig_INCLUDE_DIR="$SYSLIBS/include" -DFontconfig_LIBRARY="$SYSLIBS/lib/libfontconfig.a" \
+        -DKC_EXTRA_LIBS="-Wl,--start-group -L$CURL/lib -lcurl -lnghttp2 -L$DEPS/lib -lz -Wl,--end-group" -DZLIB_INCLUDE_DIR="$DEPS/include" -DZLIB_LIBRARY="$DEPS/lib/libz.a" -DCURL_INCLUDE_DIR="$CURL/include" -DCURL_LIBRARY="$CURL/lib/libcurl.a" -DKICAD_AMIGA=ON -DKICAD_AMIGA_SDK_INCLUDE="$WORK/src/opensdk/Include" -DKICAD_WAYLAND=OFF -DKICAD_HOST_LEMON="$HOST/bin/lemon" \
         -DKICAD_SCRIPTING_WXPYTHON=OFF -DKICAD_IPC_API=OFF -DKICAD_BUILD_QA_TESTS=OFF \
         -DKICAD_BUILD_I18N=OFF -DKICAD_SPICE_QA=OFF -DKICAD_USE_SENTRY=OFF -DKICAD_UPDATE_CHECK=OFF \
         -DKICAD_USE_PCH=OFF -DKICAD_INSTALL_DEMOS=OFF -DKICAD_SIGNAL_INTEGRITY=OFF -DKICAD_IDF_TOOLS=OFF \
