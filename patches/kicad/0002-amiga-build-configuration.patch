@@ -434,6 +434,208 @@ index 5c1423fd..18dae543 100644
          }
  
          case GAL_TYPE_CAIRO:
+diff --git a/common/eda_base_frame.cpp b/common/eda_base_frame.cpp
+index 91ea9ea9..e46c94f0 100644
+--- a/common/eda_base_frame.cpp
++++ b/common/eda_base_frame.cpp
+@@ -92,6 +92,13 @@
+ #include <api/api_server.h>
+ #endif
+ 
++#ifdef KICAD_AMIGA
++extern void KicadAmigaStep( const char* aWhere );
++#define AMIGA_MARK( x ) KicadAmigaStep( x )
++#else
++#define AMIGA_MARK( x )
++#endif
++
+ 
+ // Minimum window size
+ static const wxSize minSizeLookup( FRAME_T aFrameType, wxWindow* aWindow )
+@@ -142,34 +149,57 @@ BEGIN_EVENT_TABLE( EDA_BASE_FRAME, wxFrame )
+ 
+ void EDA_BASE_FRAME::commonInit( FRAME_T aFrameType )
+ {
++    AMIGA_MARK( "base 144" );
+     m_ident             = aFrameType;
++    AMIGA_MARK( "base 145" );
+     m_maximizeByDefault = false;
++    AMIGA_MARK( "base 146" );
+     m_infoBar           = nullptr;
++    AMIGA_MARK( "base 147" );
+     m_settingsManager   = nullptr;
++    AMIGA_MARK( "base 148" );
+     m_fileHistory       = nullptr;
++    AMIGA_MARK( "base 149" );
+     m_supportsAutoSave  = false;
++    AMIGA_MARK( "base 150" );
+     m_autoSavePending   = false;
++    AMIGA_MARK( "base 151" );
+     m_undoRedoCountMax  = DEFAULT_MAX_UNDO_ITEMS;
++    AMIGA_MARK( "base 152" );
+     m_isClosing         = false;
++    AMIGA_MARK( "base 153" );
+     m_closeInProgress   = false;
++    AMIGA_MARK( "base 154" );
+     m_isNonUserClose    = false;
++    AMIGA_MARK( "base 155" );
+     m_autoSaveTimer     = new wxTimer( this, ID_AUTO_SAVE_TIMER );
++    AMIGA_MARK( "base 156" );
+     m_autoSaveRequired  = false;
++    AMIGA_MARK( "base 157" );
+     m_autoSavePermissionError = false;
++    AMIGA_MARK( "base 158" );
+     m_mruPath           = PATHS::GetDefaultUserProjectsPath();
++    AMIGA_MARK( "base 159" );
+     m_frameSize         = defaultSize( aFrameType, this );
++    AMIGA_MARK( "base 160" );
+     m_displayIndex      = -1;
++    AMIGA_MARK( "base 161" );
+ 
+     m_auimgr.SetArtProvider( new WX_AUI_DOCK_ART() );
++    AMIGA_MARK( "base 163" );
+ 
+     m_settingsManager = &Pgm().GetSettingsManager();
++    AMIGA_MARK( "base 165" );
+ 
+     // Set a reasonable minimal size for the frame
+     wxSize minSize = minSizeLookup( aFrameType, this );
++    AMIGA_MARK( "base 168" );
+     SetSizeHints( minSize.x, minSize.y, -1, -1, -1, -1 );
++    AMIGA_MARK( "base 169" );
+ 
+     // Store dimensions of the user area of the main window.
+     GetClientSize( &m_frameSize.x, &m_frameSize.y );
++    AMIGA_MARK( "base 172" );
+ 
+     Connect( ID_AUTO_SAVE_TIMER, wxEVT_TIMER,
+              wxTimerEventHandler( EDA_BASE_FRAME::onAutoSaveTimer ) );
+@@ -177,8 +207,10 @@ void EDA_BASE_FRAME::commonInit( FRAME_T aFrameType )
+     // hook wxEVT_CLOSE_WINDOW so we can call SaveSettings().  This function seems
+     // to be called before any other hook for wxCloseEvent, which is necessary.
+     Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( EDA_BASE_FRAME::windowClosing ) );
++    AMIGA_MARK( "base 179" );
+ 
+     initExitKey();
++    AMIGA_MARK( "base 181" );
+ }
+ 
+ 
+@@ -191,13 +223,20 @@ EDA_BASE_FRAME::EDA_BASE_FRAME( wxWindow* aParent, FRAME_T aFrameType, const wxS
+         KIWAY_HOLDER( aKiway, KIWAY_HOLDER::FRAME ),
+         UNITS_PROVIDER( aIuScale, EDA_UNITS::MM )
+ {
++    AMIGA_MARK( "base 193" );
+     m_tbTopMain      = nullptr;
++    AMIGA_MARK( "base 194" );
+     m_tbTopAux = nullptr;
++    AMIGA_MARK( "base 195" );
+     m_tbRight      = nullptr;
++    AMIGA_MARK( "base 196" );
+     m_tbLeft   = nullptr;
++    AMIGA_MARK( "base 197" );
+     m_uiUpdateHandlerBound = false;
++    AMIGA_MARK( "base 198" );
+ 
+     commonInit( aFrameType );
++    AMIGA_MARK( "base 200" );
+ 
+     Bind( wxEVT_DPI_CHANGED,
+           [&]( wxDPIChangedEvent& aEvent )
+diff --git a/common/eda_draw_frame.cpp b/common/eda_draw_frame.cpp
+index b2e5f4b7..13be8bd3 100644
+--- a/common/eda_draw_frame.cpp
++++ b/common/eda_draw_frame.cpp
+@@ -83,6 +83,13 @@
+ #include <wx/snglinst.h>
+ #include <wx/fdrepdlg.h>
+ #include <tool/editor_conditions.h>
++#ifdef KICAD_AMIGA
++extern void KicadAmigaStep( const char* aWhere );
++#define AMIGA_MARK( x ) KicadAmigaStep( x )
++#else
++#define AMIGA_MARK( x )
++#endif
++
+ 
+ #define FR_HISTORY_LIST_CNT     10   ///< Maximum size of the find/replace history stacks.
+ 
+@@ -105,32 +112,52 @@ EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrame
+         m_socketServer( nullptr ),
+         m_lastToolbarIconSize( 0 )
+ {
++    AMIGA_MARK( "draw 107" );
+     m_gridSelectBox       = nullptr;
++    AMIGA_MARK( "draw 108" );
+     m_zoomSelectBox       = nullptr;
++    AMIGA_MARK( "draw 109" );
+     m_zoomCustomEntry     = wxNOT_FOUND;
++    AMIGA_MARK( "draw 110" );
+     m_overrideLocksCb     = nullptr;
++    AMIGA_MARK( "draw 111" );
+     m_searchPane          = nullptr;
++    AMIGA_MARK( "draw 112" );
+     m_undoRedoCountMax    = DEFAULT_MAX_UNDO_ITEMS;
++    AMIGA_MARK( "draw 113" );
+ 
+     m_canvasType          = EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE;
++    AMIGA_MARK( "draw 115" );
+     m_canvas              = nullptr;
++    AMIGA_MARK( "draw 116" );
+     m_toolDispatcher      = nullptr;
++    AMIGA_MARK( "draw 117" );
+     m_messagePanel        = nullptr;
++    AMIGA_MARK( "draw 118" );
+     m_currentScreen       = nullptr;
++    AMIGA_MARK( "draw 119" );
+     m_showBorderAndTitleBlock = false;  // true to display reference sheet.
+     m_gridColor           = COLOR4D( DARKGRAY );   // Default grid color
+     m_drawBgColor         = COLOR4D( BLACK );   // the background color of the draw canvas:
+                                                 // BLACK for Pcbnew, BLACK or WHITE for Eeschema
+     m_colorSettings       = nullptr;
++    AMIGA_MARK( "draw 124" );
+     m_polarCoords         = false;
++    AMIGA_MARK( "draw 125" );
+     m_findReplaceData     = std::make_unique<EDA_SEARCH_DATA>();
++    AMIGA_MARK( "draw 126" );
+     m_hotkeyPopup         = nullptr;
++    AMIGA_MARK( "draw 127" );
+     m_propertiesPanel     = nullptr;
++    AMIGA_MARK( "draw 128" );
+     m_netInspectorPanel   = nullptr;
++    AMIGA_MARK( "draw 129" );
+ 
+     SetUserUnits( EDA_UNITS::MM );
++    AMIGA_MARK( "draw 131" );
+ 
+     m_auimgr.SetFlags( wxAUI_MGR_DEFAULT );
++    AMIGA_MARK( "draw 133" );
+ 
+     if( ( aStyle & wxFRAME_NO_TASKBAR ) == 0 )
+     {
+@@ -143,15 +170,22 @@ EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrame
+     }
+ 
+     m_messagePanel = new EDA_MSG_PANEL( this, -1, wxPoint( 0, m_frameSize.y ), wxDefaultSize );
++    AMIGA_MARK( "draw 145" );
+     m_messagePanel->SetBackgroundColour( COLOR4D( LIGHTGRAY ).ToColour() );
++    AMIGA_MARK( "draw 146" );
+     m_msgFrameHeight = m_messagePanel->GetBestSize().y;
++    AMIGA_MARK( "draw 147" );
+ 
+     // Create child subwindows.
+     GetClientSize( &m_frameSize.x, &m_frameSize.y );
++    AMIGA_MARK( "draw 150" );
+     m_framePos.x   = m_framePos.y = 0;
++    AMIGA_MARK( "draw 151" );
+     m_frameSize.y -= m_msgFrameHeight;
++    AMIGA_MARK( "draw 152" );
+ 
+     m_messagePanel->SetSize( m_frameSize.x, m_msgFrameHeight );
++    AMIGA_MARK( "draw 154" );
+ 
+     Bind( wxEVT_DPI_CHANGED,
+           [&]( wxDPIChangedEvent& aEvent )
 diff --git a/common/gal/CMakeLists.txt b/common/gal/CMakeLists.txt
 index 19537f46..1bc1b2c3 100644
 --- a/common/gal/CMakeLists.txt
@@ -467,6 +669,76 @@ index 19537f46..1bc1b2c3 100644
  add_library( gal SHARED ${GAL_SRCS} )
  
  if( KICAD_USE_PCH )
+diff --git a/common/kiway.cpp b/common/kiway.cpp
+index a1aa93e4..a3645a93 100644
+--- a/common/kiway.cpp
++++ b/common/kiway.cpp
+@@ -45,6 +45,13 @@
+ #include <wx/debug.h>
+ #include <wx/utils.h>
+ #include <confirm.h>
++#ifdef KICAD_AMIGA
++extern void KicadAmigaStep( const char* aWhere );
++#define AMIGA_MARK( x ) KicadAmigaStep( x )
++#else
++#define AMIGA_MARK( x )
++#endif
++
+ 
+ std::array<KIFACE*, KIWAY::FACE_T::KIWAY_FACE_COUNT> KIWAY::m_kiface;
+ std::array<int, KIWAY::FACE_T::KIWAY_FACE_COUNT>     KIWAY::m_kiface_version;
+@@ -212,6 +219,7 @@ PROJECT& KIWAY::Prj() const
+ 
+ KIFACE* KIWAY::KiFACE( FACE_T aFaceId, bool doLoad )
+ {
++    AMIGA_MARK( "kiway 214" );
+     // Since this will be called from python, cannot assume that code will
+     // not pass a bad aFaceId.
+     if( (unsigned) aFaceId >= m_kiface.size() )
+@@ -311,7 +319,9 @@ KIFACE* KIWAY::KiFACE( FACE_T aFaceId, bool doLoad )
+ 
+             try
+             {
++                AMIGA_MARK( "kiway kiface start" );
+                 startSuccess = kiface->OnKifaceStart( &Pgm(), m_ctl, this );
++                AMIGA_MARK( "kiway kiface start done" );
+             }
+             catch (...)
+             {
+@@ -406,6 +416,7 @@ KIWAY_PLAYER* KIWAY::GetPlayerFrame( FRAME_T aFrameType )
+ 
+ KIWAY_PLAYER* KIWAY::Player( FRAME_T aFrameType, bool doCreate, wxTopLevelWindow* aParent )
+ {
++    AMIGA_MARK( "kiway 408" );
+     // Since this will be called from python, cannot assume that code will
+     // not pass a bad aFrameType.
+     if( (unsigned) aFrameType >= KIWAY_PLAYER_COUNT )
+@@ -416,6 +427,7 @@ KIWAY_PLAYER* KIWAY::Player( FRAME_T aFrameType, bool doCreate, wxTopLevelWindow
+ 
+     // return the previously opened window
+     KIWAY_PLAYER* frame = GetPlayerFrame( aFrameType );
++    AMIGA_MARK( "kiway 418" );
+ 
+     if( frame )
+         return frame;
+@@ -428,7 +440,9 @@ KIWAY_PLAYER* KIWAY::Player( FRAME_T aFrameType, bool doCreate, wxTopLevelWindow
+             APP_MONITOR::AddNavigationBreadcrumb( msg, "kiway.player" );
+ 
+             FACE_T  face_type = KifaceType( aFrameType );
++            AMIGA_MARK( "kiway player kiface" );
+             KIFACE* kiface = KiFACE( face_type );
++            AMIGA_MARK( "kiway player kiface done" );
+ 
+             if( !kiface )
+                 return nullptr;
+@@ -441,6 +455,7 @@ KIWAY_PLAYER* KIWAY::Player( FRAME_T aFrameType, bool doCreate, wxTopLevelWindow
+                                             m_ctl       // questionable need, these same flags
+                                                         // were passed to KIFACE::OnKifaceStart()
+                                             );
++            AMIGA_MARK( "kiway player window done" );
+             if( frame )
+                 m_playerFrameId[aFrameType].store( frame->GetId() );
+ 
 diff --git a/common/navlib_safe_init.cpp b/common/navlib_safe_init.cpp
 index 39e976b9..be106671 100644
 --- a/common/navlib_safe_init.cpp
@@ -526,10 +798,10 @@ index 8b7a93d6..3012bedf 100644
  
      return path;
 diff --git a/common/pgm_base.cpp b/common/pgm_base.cpp
-index 689c6de5..b584d27b 100644
+index 689c6de5..0f874773 100644
 --- a/common/pgm_base.cpp
 +++ b/common/pgm_base.cpp
-@@ -328,27 +328,56 @@ void PGM_BASE::HideSplash()
+@@ -328,27 +328,58 @@ void PGM_BASE::HideSplash()
  }
  
  
@@ -537,11 +809,12 @@ index 689c6de5..b584d27b 100644
 +#ifdef KICAD_AMIGA
 +#include <cstdio>
 +#include <cstdlib>
-+// start-up markers, when KICAD_AMIGA_STEPS is set
-+static void AMIGA_STEP( const char* aWhere )
++// start-up markers, to KICAD_AMIGA_STEPS or else T:kicad-steps.log
++void KicadAmigaStep( const char* aWhere )
 +{
-+    // KICAD_AMIGA_STEPS names the file the markers are added to
-+    if( const char* name = std::getenv( "KICAD_AMIGA_STEPS" ) )
++    const char* name = std::getenv( "KICAD_AMIGA_STEPS" );
++    if( !name )
++        name = "T:kicad-steps.log";
 +    {
 +        if( FILE* f = std::fopen( name, "a" ) )
 +        {
@@ -550,6 +823,7 @@ index 689c6de5..b584d27b 100644
 +        }
 +    }
 +}
++#define AMIGA_STEP( x ) KicadAmigaStep( x )
 +#else
 +#define AMIGA_STEP( x )
 +#endif
@@ -586,7 +860,7 @@ index 689c6de5..b584d27b 100644
  
      /// Should never happen but boost unit_test isn't playing nicely in some cases
      if( App().argc == 0 )
-@@ -357,12 +386,15 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+@@ -357,12 +388,15 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
          pgm_name = wxFileName( App().argv[0] ).GetName().Lower();
  
      APP_MONITOR::SENTRY::Instance()->AddTag( "kicad.app", pgm_name );
@@ -602,7 +876,7 @@ index 689c6de5..b584d27b 100644
  
  #if !wxCHECK_VERSION( 3, 3, 0 )
      // Without this the wxPropertyGridManager segfaults on Windows.
-@@ -384,7 +416,9 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+@@ -384,7 +418,9 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
      // multi-user machine, other need to be able to access it to check for the lock files or make
      // their own lock files.
      wxString instanceCheckerDir = PATHS::GetInstanceCheckerPath();
@@ -612,7 +886,7 @@ index 689c6de5..b584d27b 100644
      wxChmod( instanceCheckerDir,
               wxPOSIX_USER_READ | wxPOSIX_USER_WRITE | wxPOSIX_USER_EXECUTE |
               wxPOSIX_GROUP_READ | wxPOSIX_GROUP_WRITE | wxPOSIX_GROUP_EXECUTE |
-@@ -394,12 +428,15 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+@@ -394,12 +430,15 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
                                                       GetMajorMinorVersion() );
  
      m_pgm_checker = std::make_unique<wxSingleInstanceChecker>();
@@ -628,7 +902,7 @@ index 689c6de5..b584d27b 100644
  
      if( isDefined )    // ensure m_kicad_env ends by "/"
      {
-@@ -411,7 +448,9 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+@@ -411,7 +450,9 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
  
      // Init parameters for configuration
      App().SetVendorName(  wxT( "KiCad" ) );
@@ -638,7 +912,7 @@ index 689c6de5..b584d27b 100644
  
  #if wxCHECK_VERSION( 3, 3, 1 ) && defined( __WXGTK__ ) && defined( KICAD_DESKTOP_APP_NAME )
      // wxGTK feeds the class name to gdk_wayland_window_set_application_id(), so setting it
-@@ -420,6 +459,7 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+@@ -420,6 +461,7 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
      // and is supplied by CMake. The main manager keeps the bare app name; the other GUI apps
      // are prefixed. Executables without a desktop file (pl_editor, kicad-cli) are left alone.
      wxString desktopId;
@@ -646,7 +920,7 @@ index 689c6de5..b584d27b 100644
  
      if( pgm_name == wxT( "kicad" ) )
      {
-@@ -440,8 +480,11 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+@@ -440,8 +482,11 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
  
      // Analyze the command line & initialize the binary path
      wxString tmp;
@@ -658,7 +932,7 @@ index 689c6de5..b584d27b 100644
  
  #ifdef _MSC_VER
      if( !wxGetEnv( "FONTCONFIG_PATH", NULL ) )
-@@ -456,15 +499,21 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+@@ -456,15 +501,21 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
  
  #ifdef _MSC_VER
      winrt::init_apartment(winrt::apartment_type::single_threaded);
@@ -680,7 +954,7 @@ index 689c6de5..b584d27b 100644
  #endif
  
      // Our unit test mocks break if we continue
-@@ -479,13 +528,17 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+@@ -479,13 +530,17 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
  
      // Set up built-in environment variables (and override them from the system environment if set)
      COMMON_SETTINGS* commonSettings = GetCommonSettings();
@@ -698,7 +972,7 @@ index 689c6de5..b584d27b 100644
  
  #ifdef KICAD_IPC_API
      // If user doesn't have a saved Python interpreter, try (potentially again) to find one
-@@ -497,15 +550,19 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+@@ -497,15 +552,19 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
      // env vars could be incorrectly initialized on Linux
      // (if the value contains some non ASCII7 chars, the env var is not initialized)
      SetLanguage( tmp, true );
@@ -718,7 +992,7 @@ index 689c6de5..b584d27b 100644
  
      // Create the python scripting stuff
      // Skip it for applications that do not use it
-@@ -515,6 +572,7 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+@@ -515,6 +574,7 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
      // TODO(JE): Remove this if apps are refactored to not assume Prj() always works
      // Need to create a project early for now (it can have an empty path for the moment)
      GetSettingsManager().LoadProject( "" );
@@ -970,7 +1244,7 @@ index ec1662bb..5804ac99 100644
      if( hasVisibleGlyph && !run.m_bytes.empty() )
          aRuns->push_back( std::move( run ) );
 diff --git a/common/single_top.cpp b/common/single_top.cpp
-index 47e07280..75d2d5f2 100644
+index 47e07280..1581d120 100644
 --- a/common/single_top.cpp
 +++ b/common/single_top.cpp
 @@ -34,7 +34,13 @@
@@ -1124,7 +1398,12 @@ index 47e07280..75d2d5f2 100644
  
  
      if( const COMMON_SETTINGS* cfg = Pgm().GetCommonSettings() )
-@@ -415,12 +469,14 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+@@ -412,15 +466,19 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+             KIPLATFORM::APP::EnableDarkMode( false );
+     }
+ 
++    AMIGA_STEP( "top theme done" );
++
  #ifdef KICAD_IPC_API
      // Create the API server thread once the app event loop exists
      m_api_server = std::make_unique<KICAD_API_SERVER>();
@@ -1139,7 +1418,7 @@ index 47e07280..75d2d5f2 100644
  
      if( frame == nullptr )
      {
-@@ -430,30 +486,42 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+@@ -430,30 +488,42 @@ bool PGM_SINGLE_TOP::OnPgmInit()
      }
  
      Kiway.SetTop( frame );
@@ -1182,7 +1461,7 @@ index 47e07280..75d2d5f2 100644
  
  
      static const wxCmdLineEntryDesc desc[] = {
-@@ -463,8 +531,11 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+@@ -463,8 +533,11 @@ bool PGM_SINGLE_TOP::OnPgmInit()
      };
  
      wxCmdLineParser parser( App().argc, App().argv );
@@ -1194,7 +1473,7 @@ index 47e07280..75d2d5f2 100644
  
      if( parser.GetParamCount() )
      {
-@@ -505,9 +576,11 @@ bool PGM_SINGLE_TOP::OnPgmInit()
+@@ -505,9 +578,11 @@ bool PGM_SINGLE_TOP::OnPgmInit()
          topFrame->PreloadLibraries( &Kiway );
  
      PreloadDesignBlockLibraries( &Kiway );
@@ -1644,6 +1923,169 @@ index f287e536..04624b50 100644
      pl_editor.cpp
      ${PL_EDITOR_SRCS}
      ${DIALOGS_SRCS}
+diff --git a/pagelayout_editor/pl_editor_frame.cpp b/pagelayout_editor/pl_editor_frame.cpp
+index 351eec1c..94ffb0b5 100644
+--- a/pagelayout_editor/pl_editor_frame.cpp
++++ b/pagelayout_editor/pl_editor_frame.cpp
+@@ -71,6 +71,13 @@
+ #include <spacenav/spnav_2d_plugin.h>
+ #else
+ #include <navlib/nl_pl_editor_plugin.h>
++#ifdef KICAD_AMIGA
++extern void KicadAmigaStep( const char* aWhere );
++#define AMIGA_MARK( x ) KicadAmigaStep( x )
++#else
++#define AMIGA_MARK( x )
++#endif
++
+ #endif
+ 
+ 
+@@ -99,54 +106,86 @@ PL_EDITOR_FRAME::PL_EDITOR_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
+         m_originSelectBox( nullptr ), m_originSelectChoice( 0 ), m_pageSelectBox( nullptr ),
+         m_mruImagePath( wxEmptyString )
+ {
++    AMIGA_MARK( "pl 101" );
+     m_maximizeByDefault = true;
++    AMIGA_MARK( "pl 102" );
+     SetUserUnits( EDA_UNITS::MM );
++    AMIGA_MARK( "pl 103" );
+ 
+     m_showBorderAndTitleBlock   = true; // true for reference drawings.
+     DS_DATA_MODEL::GetTheInstance().m_EditMode = true;
++    AMIGA_MARK( "pl 106" );
+     m_aboutTitle = _HKI( "KiCad Drawing Sheet Editor" );
++    AMIGA_MARK( "pl 107" );
+ 
+     // Give an icon
+     wxIcon icon;
++    AMIGA_MARK( "pl 110" );
+     wxIconBundle icon_bundle;
++    AMIGA_MARK( "pl 111" );
+ 
+     icon.CopyFromBitmap( KiBitmap( BITMAPS::icon_pagelayout_editor, 48 ) );
++    AMIGA_MARK( "pl 113" );
+     icon_bundle.AddIcon( icon );
++    AMIGA_MARK( "pl 114" );
+     icon.CopyFromBitmap( KiBitmap( BITMAPS::icon_pagelayout_editor, 128 ) );
++    AMIGA_MARK( "pl 115" );
+     icon_bundle.AddIcon( icon );
++    AMIGA_MARK( "pl 116" );
+     icon.CopyFromBitmap( KiBitmap( BITMAPS::icon_pagelayout_editor, 256 ) );
++    AMIGA_MARK( "pl 117" );
+     icon_bundle.AddIcon( icon );
++    AMIGA_MARK( "pl 118" );
+     icon.CopyFromBitmap( KiBitmap( BITMAPS::icon_pagelayout_editor_32 ) );
++    AMIGA_MARK( "pl 119" );
+     icon_bundle.AddIcon( icon );
++    AMIGA_MARK( "pl 120" );
+     icon.CopyFromBitmap( KiBitmap( BITMAPS::icon_pagelayout_editor_16 ) );
++    AMIGA_MARK( "pl 121" );
+     icon_bundle.AddIcon( icon );
++    AMIGA_MARK( "pl 122" );
+ 
+     SetIcons( icon_bundle );
++    AMIGA_MARK( "pl 124" );
+ 
+     // Create GAL canvas
+     auto* drawPanel = new PL_DRAW_PANEL_GAL( this, -1, wxPoint( 0, 0 ), m_frameSize,
+                                              GetGalDisplayOptions(),
+                                              EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE );
+     SetCanvas( drawPanel );
++    AMIGA_MARK( "pl 130" );
+ 
+     LoadSettings( config() );
++    AMIGA_MARK( "pl 132" );
+ 
+     m_acceptedExts.emplace( FILEEXT::DrawingSheetFileExtension, nullptr );
++    AMIGA_MARK( "pl 134" );
+     DragAcceptFiles( true );
++    AMIGA_MARK( "pl 135" );
+ 
+     VECTOR2I pageSizeIU = GetPageLayout().GetPageSettings().GetSizeIU( drawSheetIUScale.IU_PER_MILS );
++    AMIGA_MARK( "pl 137" );
+     SetScreen( new BASE_SCREEN( pageSizeIU ) );
++    AMIGA_MARK( "pl 138" );
+ 
+     setupTools();
++    AMIGA_MARK( "pl 140" );
+     setupUIConditions();
++    AMIGA_MARK( "pl 141" );
+     ReCreateMenuBar();
++    AMIGA_MARK( "pl 142" );
+ 
+     m_toolbarSettings = GetToolbarSettings<PL_EDITOR_TOOLBAR_SETTINGS>( "pl_editor-toolbars" );
++    AMIGA_MARK( "pl 144" );
+     configureToolbars();
++    AMIGA_MARK( "pl 145" );
+     RecreateToolbars();
++    AMIGA_MARK( "pl 146" );
+ 
+     wxStatusBar* stsbar = GetStatusBar();
++    AMIGA_MARK( "pl 148" );
+     int          spacer = KIUI::GetTextSize( wxT( "M" ), stsbar ).x * 2;
++    AMIGA_MARK( "pl 149" );
+ 
+     int dims[] = {
+ 
+@@ -177,14 +216,18 @@ PL_EDITOR_FRAME::PL_EDITOR_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
+         // constraint mode
+         KIUI::GetTextSize( _( "Constrain to H, V, 45" ), stsbar ).x + spacer
+     };
++    AMIGA_MARK( "pl 179" );
+ 
+     if( stsbar )
+         stsbar->SetFieldsCount( arrayDim( dims ), dims );
+ 
+     m_auimgr.SetManagedWindow( this );
++    AMIGA_MARK( "pl 184" );
+ 
+     CreateInfoBar();
++    AMIGA_MARK( "pl 186" );
+     m_propertiesPagelayout = new PROPERTIES_FRAME( this );
++    AMIGA_MARK( "pl 187" );
+ 
+     // Rows; layers 4 - 6
+     m_auimgr.AddPane( m_tbTopMain, EDA_PANE().HToolbar().Name( "TopMainToolbar" )
+@@ -209,27 +252,38 @@ PL_EDITOR_FRAME::PL_EDITOR_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
+                       .Center() );
+ 
+     FinishAUIInitialization();
++    AMIGA_MARK( "pl 211" );
+ 
+     resolveCanvasType();
++    AMIGA_MARK( "pl 213" );
+     SwitchCanvas( m_canvasType );
++    AMIGA_MARK( "pl 214" );
+ 
+     // Add the exit key handler
+     setupUnits( config() );
++    AMIGA_MARK( "pl 217" );
+ 
+     VECTOR2I originCoord = ReturnCoordOriginCorner();
++    AMIGA_MARK( "pl 219" );
+     SetGridOrigin( originCoord );
++    AMIGA_MARK( "pl 220" );
+ 
+     // Initialize the current drawing sheet
+ #if 0       //start with empty layout
+     DS_DATA_MODEL::GetTheInstance().AllowVoidList( true );
++    AMIGA_MARK( "pl 224" );
+     DS_DATA_MODEL::GetTheInstance().ClearList();
++    AMIGA_MARK( "pl 225" );
+ #else       // start with the default KiCad layout
+     DS_DATA_MODEL::GetTheInstance().LoadDrawingSheet( wxEmptyString, nullptr );
++    AMIGA_MARK( "pl 227" );
+ #endif
+     OnNewDrawingSheet();
++    AMIGA_MARK( "pl 229" );
+ 
+     // Ensure the window is on top
+     Raise();
++    AMIGA_MARK( "pl 232" );
+ 
+     // Register a call to update the toolbar sizes. It can't be done immediately because
+     // it seems to require some sizes calculated that aren't yet (at least on GTK).
 diff --git a/pcb_calculator/CMakeLists.txt b/pcb_calculator/CMakeLists.txt
 index 915e4d70..cc966183 100644
 --- a/pcb_calculator/CMakeLists.txt
