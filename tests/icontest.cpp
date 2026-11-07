@@ -11,25 +11,24 @@
 #include <wx/wfstream.h>
 #include <wx/mstream.h>
 #include <wx/aui/auibar.h>
-#include <wx/ffile.h>
+#include <cstdio>
 
 #include <map>
 #include <string>
 #include <vector>
 #include <cstring>
 
-static wxFFile g_log;
-
+// opened and closed per line, so the log can be read while the test runs
 static void Log( const wxString& aText )
 {
     wxString line = aText + "\n";
     fputs( line.mb_str(), stdout );
     fflush( stdout );
 
-    if( g_log.IsOpened() )
+    if( FILE* f = fopen( "T:icontest.log", "a" ) )
     {
-        g_log.Write( line );
-        g_log.Flush();
+        fputs( line.mb_str(), f );
+        fclose( f );
     }
 }
 
@@ -87,6 +86,9 @@ static std::map<std::string, std::vector<char>> ReadTar( const wxString& aPath,
 
         entries++;
 
+        if( entries % 500 == 0 )
+            Log( wxString::Format( "tar: %lu entries", (unsigned long) entries ) );
+
         for( const std::string& w : aWant )
         {
             if( name == w )
@@ -108,7 +110,8 @@ class IconApp : public wxApp
 public:
     bool OnInit() override
     {
-        g_log.Open( "T:icontest.log", "w" );
+        remove( "T:icontest.log" );
+        Log( "icontest start" );
         wxInitAllImageHandlers();
 
         wxString path = argc > 1 ? argv[1] : wxString( "PROGDIR:share/kicad/resources/images.tar.gz" );
@@ -197,6 +200,12 @@ public:
         Log( wxString::Format( "aui tool 101 bitmap ok %d, min size %dx%d",
                                it ? it->GetBitmapFor( aui ).IsOk() : -1,
                                it ? it->GetMinSize().x : -1, it ? it->GetMinSize().y : -1 ) );
+        wxSize pref = bundle1.GetPreferredBitmapSizeFor( aui );
+        wxBitmap forAui = bundle1.GetBitmapFor( aui );
+        Log( wxString::Format( "DPI scale %.3f, content scale %.3f, bundle size for aui %dx%d, bitmap %d %dx%d",
+                               aui->GetDPIScaleFactor(), aui->GetContentScaleFactor(), pref.x, pref.y,
+                               forAui.IsOk(), forAui.IsOk() ? forAui.GetWidth() : 0,
+                               forAui.IsOk() ? forAui.GetHeight() : 0 ) );
         Log( wxString::Format( "wxToolBar %dx%d, %lu tools", ts.x, ts.y, (unsigned long) tb->GetToolsCount() ) );
         Log( "done; close the window to quit" );
         return true;
