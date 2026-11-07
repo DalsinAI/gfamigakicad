@@ -121,6 +121,11 @@ done
 "$TC/bin/m68k-amigaos-g++" -O2 -m68040 -noixemul -o "$OUT/rdtest" "$HERE/tests/rdtest.cpp" \
     -Wl,--wrap=open -Wl,--wrap=read -Wl,--wrap=close "$WORK/deps/lib/gfamiga_random.o" -lpthread \
     || echo "kicad-amiga: rdtest did not build"
+# the allocator check (tests/malloctest.c): with our malloc, and with libnix's to compare
+"$TC/bin/m68k-amigaos-gcc" -O2 -m68040 -noixemul -o "$OUT/malloctest" "$HERE/tests/malloctest.c" \
+    "$WORK/deps/lib/gfamiga_malloc.o" || echo "kicad-amiga: malloctest did not build"
+"$TC/bin/m68k-amigaos-gcc" -O2 -m68040 -noixemul -o "$OUT/malloctest-libnix" "$HERE/tests/malloctest.c" \
+    || echo "kicad-amiga: malloctest-libnix did not build"
 # what the programs read from PROGDIR:share/kicad: the toolbar and menu
 # images, the settings schemas and the new project template
 S="$OUT/share/kicad"; rm -rf "$S"; mkdir -p "$S/resources" "$S/schemas" "$S/template"

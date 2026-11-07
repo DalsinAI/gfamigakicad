@@ -62,7 +62,7 @@ if [ ! -f "$B/build.ninja" ] || [ "${RECONFIGURE:-0}" = 1 ] \
         -DCMAKE_CXX_FLAGS_RELEASE="-O2 -DNDEBUG" -DCMAKE_C_FLAGS_RELEASE="-O2 -DNDEBUG" \
         -DCMAKE_PREFIX_PATH="/" \
         -DwxWidgets_CONFIG_EXECUTABLE="$WXSDK/bin/wx-config" \
-        -DKC_EXTRA_LIBS="-Wl,--wrap=open -Wl,--wrap=read -Wl,--wrap=close $DEPS/lib/gfamiga_random.o -Wl,--start-group -L$CURL/lib -lcurl -lnghttp2 -L$DEPS/lib -lz -lgfamiga_compat -Wl,--end-group" -DZLIB_INCLUDE_DIR="$DEPS/include" -DZLIB_LIBRARY="$DEPS/lib/libz.a" -DCURL_INCLUDE_DIR="$CURL/include" -DCURL_LIBRARY="$CURL/lib/libcurl.a" -DKICAD_AMIGA=ON -DKICAD_AMIGA_SDK_INCLUDE="$WORK/src/opensdk/Include" -DKICAD_WAYLAND=OFF -DKICAD_HOST_LEMON="$HOST/bin/lemon" \
+        -DKC_EXTRA_LIBS="-Wl,--wrap=open -Wl,--wrap=read -Wl,--wrap=close $DEPS/lib/gfamiga_random.o $DEPS/lib/gfamiga_malloc.o -Wl,--start-group -L$CURL/lib -lcurl -lnghttp2 -L$DEPS/lib -lz -lgfamiga_compat -Wl,--end-group" -DZLIB_INCLUDE_DIR="$DEPS/include" -DZLIB_LIBRARY="$DEPS/lib/libz.a" -DCURL_INCLUDE_DIR="$CURL/include" -DCURL_LIBRARY="$CURL/lib/libcurl.a" -DKICAD_AMIGA=ON -DKICAD_AMIGA_SDK_INCLUDE="$WORK/src/opensdk/Include" -DKICAD_WAYLAND=OFF -DKICAD_HOST_LEMON="$HOST/bin/lemon" \
         -DKICAD_SCRIPTING_WXPYTHON=OFF -DKICAD_IPC_API=OFF -DKICAD_BUILD_QA_TESTS=OFF \
         -DKICAD_BUILD_I18N=OFF -DKICAD_SPICE_QA=OFF -DKICAD_USE_SENTRY=OFF -DKICAD_UPDATE_CHECK=OFF \
         -DKICAD_USE_PCH=OFF -DKICAD_INSTALL_DEMOS=OFF -DKICAD_SIGNAL_INTEGRITY=OFF \
