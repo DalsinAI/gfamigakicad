@@ -121,6 +121,11 @@ done
 "$TC/bin/m68k-amigaos-g++" -O2 -m68040 -noixemul -o "$OUT/rdtest" "$HERE/tests/rdtest.cpp" \
     -Wl,--wrap=open -Wl,--wrap=read -Wl,--wrap=close "$WORK/deps/lib/gfamiga_random.o" -lpthread \
     || echo "kicad-amiga: rdtest did not build"
+# the toolbar icon check (tests/icontest.cpp): icons out of images.tar.gz on
+# a wxAuiToolBar (KiCad's toolbars) and a wxToolBar, with the same toolkit
+"$TC/bin/m68k-amigaos-g++" -std=gnu++20 -D_DEFAULT_SOURCE -O2 -m68040 -noixemul \
+    $("$WXSDK/bin/wx-config" --cxxflags) -o "$OUT/icontest" "$HERE/tests/icontest.cpp" \
+    $("$WXSDK/bin/wx-config" --libs aui,core,base) || echo "kicad-amiga: icontest did not build"
 # what the programs read from PROGDIR:share/kicad: the toolbar and menu
 # images, the settings schemas and the new project template
 S="$OUT/share/kicad"; rm -rf "$S"; mkdir -p "$S/resources" "$S/schemas" "$S/template"
