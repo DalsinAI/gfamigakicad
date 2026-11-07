@@ -69,6 +69,9 @@ if [ "$(cat "$WX/.commit" 2>/dev/null || true)" != "$TOOLKIT_COMMIT" ]; then
         > "$WORK/toolkit.log" 2>&1 || rc=$?
     [ "$rc" = 124 ] && { tail -8 "$WORK/toolkit.log"; again; }
     [ "$rc" = 0 ] || { tail -30 "$WORK/toolkit.log"; exit 1; }
+    # the toolkit's build hides a GUI build failure behind a pipe: show it
+    grep -E 'error|Error [0-9]' "$WORK/toolkit.log" | head -20 || true
+    ls -l "$WX/out/sdk/lib" | head -20
     echo "$TOOLKIT_COMMIT" > "$WX/.commit"
 fi
 WXSDK="$WX/out/sdk"
