@@ -193,8 +193,9 @@ public:
         aui->AddTool( 101, "New", bundle1 );
         aui->AddTool( 102, "Zoom", bundle2 );
         aui->AddSeparator();
-        aui->AddControl( new wxChoice( aui, wxID_ANY, wxDefaultPosition, wxDefaultSize,
-                                       wxArrayString( 1, "Page 1" ) ) );
+        wxChoice* choice = new wxChoice( aui, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+                                         wxArrayString( 1, "Page 1" ) );
+        aui->AddControl( choice );
         aui->Realize();
 
         wxToolBar* tb = new wxToolBar( panel, wxID_ANY );
@@ -226,6 +227,23 @@ public:
                                forAui.IsOk(), forAui.IsOk() ? forAui.GetWidth() : 0,
                                forAui.IsOk() ? forAui.GetHeight() : 0 ) );
         Log( wxString::Format( "wxToolBar %dx%d, %lu tools", ts.x, ts.y, (unsigned long) tb->GetToolsCount() ) );
+        auto rects = [&]( const char* aWhen )
+        {
+            wxRect a = aui->GetToolRect( 101 ), b = aui->GetToolRect( 102 );
+            wxPoint cp = choice->GetPosition();
+            Log( wxString::Format( "%s: aui %dx%d client %dx%d, 101 %d,%d %dx%d, 102 %d,%d %dx%d, choice at %d,%d",
+                                   aWhen, aui->GetSize().x, aui->GetSize().y, aui->GetClientSize().x,
+                                   aui->GetClientSize().y, a.x, a.y, a.width, a.height, b.x, b.y, b.width,
+                                   b.height, cp.x, cp.y ) );
+        };
+
+        rects( "after show" );
+        aui->Realize();
+        rects( "after a second Realize" );
+        aui->SendSizeEvent();
+        rects( "after SendSizeEvent" );
+        aui->SetSize( aui->GetSize().x, aui->GetSize().y + 1 );
+        rects( "after SetSize +1" );
         Log( "done; close the window to quit" );
         return true;
     }
