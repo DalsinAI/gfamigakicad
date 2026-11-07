@@ -125,7 +125,12 @@ done
 # a wxAuiToolBar (KiCad's toolbars) and a wxToolBar, with the same toolkit
 "$TC/bin/m68k-amigaos-g++" -std=gnu++20 -D_DEFAULT_SOURCE -O2 -m68040 -noixemul \
     $("$WXSDK/bin/wx-config" --cxxflags) -o "$OUT/icontest" "$HERE/tests/icontest.cpp" \
-    $("$WXSDK/bin/wx-config" --libs aui,core,base) || echo "kicad-amiga: icontest did not build"
+    "$WORK/deps/lib/libz.a" $("$WXSDK/bin/wx-config" --libs aui,core,base) \
+    || echo "kicad-amiga: icontest did not build"
+# and the same icons as plain files, so the test can skip the archive
+mkdir -p "$OUT/icons"
+tar xzf "$B/resources/images.tar.gz" -C "$OUT/icons" ./new_project_24.png ./zoom_fit_in_page_24.png \
+    ./new_project_16.png ./zoom_fit_in_page_16.png || echo "kicad-amiga: icons not unpacked"
 # what the programs read from PROGDIR:share/kicad: the toolbar and menu
 # images, the settings schemas and the new project template
 S="$OUT/share/kicad"; rm -rf "$S"; mkdir -p "$S/resources" "$S/schemas" "$S/template"

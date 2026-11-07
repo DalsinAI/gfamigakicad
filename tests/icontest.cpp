@@ -12,6 +12,7 @@
 #include <wx/mstream.h>
 #include <wx/aui/auibar.h>
 #include <cstdio>
+#include <wx/ffile.h>
 
 #include <map>
 #include <string>
@@ -117,7 +118,25 @@ public:
         wxString path = argc > 1 ? argv[1] : wxString( "PROGDIR:share/kicad/resources/images.tar.gz" );
         std::vector<std::string> want = { "new_project_24.png", "zoom_fit_in_page_24.png",
                                           "new_project_16.png", "zoom_fit_in_page_16.png" };
-        auto files = ReadTar( path, want );
+        // plain files first (SYS:T/icons/), so a stuck gunzip doesn't hide the rest
+        std::map<std::string, std::vector<char>> files;
+
+        for( const std::string& w : want )
+        {
+            wxFFile f( wxString( "PROGDIR:icons/" ) + w, "rb" );
+
+            if( f.IsOpened() )
+            {
+                std::vector<char> d( f.Length() );
+                f.Read( d.data(), d.size() );
+                files[w] = d;
+            }
+        }
+
+        Log( wxString::Format( "%lu icons read as plain files", (unsigned long) files.size() ) );
+
+        if( argc > 1 && files.size() < want.size() )
+            files = ReadTar( path, want );
 
         wxImage::AddHandler( new wxPNGHandler ); // harmless if already there
         Log( wxString::Format( "PNG handler: %s",
