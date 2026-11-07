@@ -3,8 +3,9 @@
 KICAD_VERSION=10.0.8
 KICAD_URL=https://gitlab.com/kicad/code/kicad/-/archive/10.0.8/kicad-10.0.8.tar.gz
 KICAD_SHA256=0723fedd82522fcd33cb9d8ad53979a35f6e4d3ec627c4e2e2708dfcba360574
-BOOST_URL=https://github.com/boostorg/boost/releases/download/boost-1.89.0/boost-1.89.0-b2-nodocs.tar.xz
-BOOST_SHA256=875cc413afa6b86922b6df3b2ad23dec4511c8a741753e57c1129e7fa753d700
+# GFOpenBoost, the shared Boost SDK: the v1.89.0-rc1 pre-release
+GFOPENBOOST_URL=https://github.com/DalsinAI/gfopenboost/releases/download/v1.89.0-rc1/gfopenboost-1.89.0-sdk.tar.xz
+GFOPENBOOST_SHA256=a6cad796bc9f7ac84e81704bef6553f63588255eb7012512d0359654507be52a
 ZSTD_URL=https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz
 ZSTD_SHA256=eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3
 PROTOBUF_URL=https://github.com/protocolbuffers/protobuf/releases/download/v21.12/protobuf-cpp-3.21.12.tar.gz
