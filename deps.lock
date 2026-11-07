@@ -22,7 +22,7 @@ OPENSDK_COMMIT=60797bf2d7d7fb63c0e8169fb5a08cdcc35f180c
 # GFOpenWX Toolkit SDK (WXSDK): TEST of toolkit branch team3/kicad-toolkit-test-20261107
 # (zlib 53.13 stub + client DC), built here; put back to the release before a PR
 TOOLKIT_REPO=https://github.com/DalsinAI/gfopenwxtoolkit
-TOOLKIT_COMMIT=674ad42c7803094f8e7de3dd3dd0571afea9dc72
+TOOLKIT_COMMIT=a558b834c31fbb406522e5b7180dd5d6b8f958e6
 TOOLKIT_SDK_URL=
 TOOLKIT_SDK_SHA256=
 
