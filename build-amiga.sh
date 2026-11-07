@@ -108,6 +108,10 @@ for p in kicad/kicad kicad/kicad-cli eeschema/eeschema pcbnew/pcbnew gerbview/ge
          pagelayout_editor/pl_editor bitmap2component/bitmap2component pcb_calculator/pcb_calculator; do
     [ -f "$B/$p" ] && cp "$B/$p" "$OUT/"
 done
+# the stoves' fpuauto (soft-float maths on the FPU when there is one) must be in:
+# its __wrap_ routines are linked in place of the soft-float calls
+FW=$("$TC/bin/m68k-amigaos-nm" "$OUT/pcbnew" 2>/dev/null | grep -c ' T ___wrap_' || true)
+echo "kicad-amiga: fpuauto routines in pcbnew: $FW"
 # the zlib check (tests/ztest.c) against the same libz.a KiCad links
 "$TC/bin/m68k-amigaos-gcc" -O2 -m68040 -noixemul -I"$HERE/compat/include" -o "$OUT/ztest" \
     "$HERE/tests/ztest.c" -L"$WORK/deps/lib" -lz || echo "kicad-amiga: ztest did not build"

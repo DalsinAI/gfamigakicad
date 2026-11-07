@@ -130,33 +130,14 @@ if [ ! -f "$DEPS/lib/libngspice_none.a" ]; then
     printf '!<arch>\n' > "$DEPS/lib/libngspice_none.a"
 fi
 
-# ---- Boost: headers, and Boost.Locale on its std backend (no ICU, no iconv)
-if ! done_for boost "$BOOST_SHA256"; then
-    S=$(unpack "$(fetch boost "$BOOST_URL" "$BOOST_SHA256")")
+# ---- Boost: the shared GFOpenBoost SDK (headers with our Amiga config, and
+# Boost.Locale on its std backend), the same Boost every port links
+if ! done_for boost "$GFOPENBOOST_SHA256"; then
+    S=$(unpack "$(fetch gfopenboost "$GFOPENBOOST_URL" "$GFOPENBOOST_SHA256")")
     rm -rf "$DEPS/include/boost"
-    # the b2 release keeps each library's headers in libs/*/include
-    for d in "$S"/libs/*/include "$S"/libs/numeric/*/include; do
-        [ -d "$d/boost" ] && cp -r "$d/boost" "$DEPS/include/" 2>/dev/null || true
-    done
-    [ -d "$S/boost" ] && cp -r "$S/boost" "$DEPS/include/" || true
-    # libpthread's condition variables time out on the real-time clock and it has
-    # no pthread_condattr_setclock(), so Boost.Thread must not take CLOCK_MONOTONIC
-    sed -i 's|^  #if defined(CLOCK_MONOTONIC)$|  #if defined(CLOCK_MONOTONIC) \&\& !defined(__amigaos__)|' \
-        "$DEPS/include/boost/thread/detail/config.hpp"
-    grep -q 'CLOCK_MONOTONIC) && !defined(__amigaos__)' "$DEPS/include/boost/thread/detail/config.hpp"
-    BCFG="-DBOOST_PLATFORM_CONFIG=<$HERE/compat/boost_amiga_platform.hpp>"
-    L="$S/libs/locale/src"; O="$WORK/obj/boost_locale"; rm -rf "$O"; mkdir -p "$O"
-    SRCS=$(cd "$L" && ls encoding/codepage.cpp shared/*.cpp std/*.cpp util/*.cpp | grep -v iconv)
-    for s in $SRCS; do
-        $CXX $OPT -std=gnu++17 -DBOOST_LOCALE_NO_POSIX_BACKEND -DBOOST_LOCALE_NO_WINAPI_BACKEND \
-            "$BCFG" -DBOOST_LOCALE_STATIC_LINK -DBOOST_LOCALE_SOURCE -DBOOST_LOCALE_WITH_ICONV=0 -DBOOST_THREAD_USE_LIB \
-            -I"$DEPS/include" -I"$L" -c "$L/$s" -o "$O/$(echo "$s" | tr / _).o" &
-        while [ "$(jobs -p | wc -l)" -ge "$JOBS" ]; do sleep 1; done
-    done
-    wait
-    [ "$(ls "$O" | wc -l)" -eq "$(echo "$SRCS" | wc -w)" ] || { echo "deps: Boost.Locale did not compile" >&2; exit 1; }
-    rm -f "$DEPS/lib/libboost_locale.a"; $AR rcs "$DEPS/lib/libboost_locale.a" "$O"/*.o
-    mark boost "$BOOST_SHA256"; log "boost done ($(ls "$O" | wc -l) locale objects)"
+    cp -r "$S/include/boost" "$DEPS/include/"
+    cp "$S/lib/libboost_locale.a" "$DEPS/lib/libboost_locale.a"
+    mark boost "$GFOPENBOOST_SHA256"; log "boost done (GFOpenBoost $(basename "$GFOPENBOOST_URL"))"
 fi
 
 # ---- protobuf 3.21 (the last without Abseil): host protoc and the m68k library
