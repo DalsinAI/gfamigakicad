@@ -52,11 +52,12 @@ PY
 fix_makefile() {
     f=$1
     [ -f "$f" ] || return 0
-    grep -q 'fpermissive' "$f" && return 0
-    # bakefile writes "CXXFLAGS = ..."; only that line, and only once
-    if grep -q '^CXXFLAGS = ' "$f"; then
-        sed -i 's/^CXXFLAGS = /CXXFLAGS = -fpermissive /' "$f"
-    fi
+    # bakefile uses CXXFLAGS; the toolkit's GUI Makefile uses CXXF
+    for var in CXXFLAGS CXXF; do
+        if grep -q "^$var = " "$f" && ! grep -q "^$var = .*fpermissive" "$f"; then
+            sed -i "s/^$var = /$var = -fpermissive /" "$f"
+        fi
+    done
 }
 
 hook_toolkit_scripts() {

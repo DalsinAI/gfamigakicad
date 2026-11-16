@@ -49,6 +49,25 @@ else
     fails=$((fails + 1))
 fi
 
+# the toolkit's GUI Makefile names the flags CXXF, not CXXFLAGS
+mkdir -p "$tmp/gui"
+printf 'CXXF = -noixemul -m68040 -Os\nSTCF = $(CXXF) -DSCI_LEXER\n' > "$tmp/gui/Makefile"
+sh "$FIX" "$tmp" "$tmp/gui"
+if grep -q '^CXXF = -fpermissive -noixemul' "$tmp/gui/Makefile" \
+   && grep -q '^STCF = $(CXXF) -DSCI_LEXER$' "$tmp/gui/Makefile"; then
+    say ok "GUI Makefile CXXF got -fpermissive, STCF left as a reference"
+else
+    say FAIL "GUI Makefile flags"
+    fails=$((fails + 1))
+fi
+sh "$FIX" "$tmp" "$tmp/gui"
+if [ "$(grep -c fpermissive "$tmp/gui/Makefile")" = 1 ]; then
+    say ok "CXXF patch is idempotent"
+else
+    say FAIL "CXXF patch duplicated"
+    fails=$((fails + 1))
+fi
+
 # a second run must not duplicate the edits
 sh "$FIX" "$tmp" "$tmp/build"
 n=$(grep -c '^[[:space:]]*#undef m_next$' "$tmp/src/common/webrequest_curl.cpp")
