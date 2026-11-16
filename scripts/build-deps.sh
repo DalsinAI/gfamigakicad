@@ -33,7 +33,7 @@ rm -f "$DEPS/lib/libgfamiga_compat.a"; $AR rcs "$DEPS/lib/libgfamiga_compat.a" "
 $CC $OPT -c -o "$DEPS/lib/gfamiga_random.o" "$HERE/compat/src/gfamiga_random.c"
 # our malloc (size classes over 64 KB arenas) in place of libnix's list walk:
 # linked as an object, ahead of libnix
-$CC $OPT -fno-builtin -c -o "$DEPS/lib/gfamiga_malloc.o" "$HERE/compat/src/gfamiga_malloc.c"
+$CC $OPT -fno-builtin -I"$HERE/compat/include" -c -o "$DEPS/lib/gfamiga_malloc.o" "$HERE/compat/src/gfamiga_malloc.c"
 
 fetch() { # name url sha256 -> $DL/<file>
     f="$DL/$(basename "$2")"
