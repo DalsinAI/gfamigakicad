@@ -5,7 +5,7 @@ repository is the Amiga port: the build, the compatibility layer, the
 patches and the packaging. KiCad itself is fetched at build time and
 checked by SHA-256 (`deps.lock`).
 
-The latest tagged package is **0.1.0-RC4**.
+The latest source version is **0.1.0-RC5**. The latest tagged package is [0.1.0-RC4](https://github.com/DalsinAI/gfamigakicad/releases/tag/v0.1.0-rc4).
 
 ## What it ships
 
