@@ -7,6 +7,8 @@
  * are computed here then, so they never depend on it.
  * z.library's init calls take no version string or stream size (the
  * library is the version), so those zlib arguments are checked here.
+ * GFOpenZlib before 53.13 (53.12 is on most systems, and still names itself
+ * "OpenZlib") is called through its old table (zold_*), not refused.
  * Copyright (c) 2026 AmiCradle Team. MIT. */
 #include <stdlib.h>
 #include <string.h>
@@ -14,10 +16,12 @@
 #include <exec/libraries.h>
 #include <proto/exec.h>
 #include "zlib.h"
+#include "gfamiga_zlib_id.h"
 
 static struct Library* ZBase;
 static int             ZTried;
 static int             ZOwn;
+static int             ZOld;
 
 static void z_close( void )
 {
@@ -37,27 +41,27 @@ static struct Library* z_base( void )
 
         if( ZBase )
         {
-            const char* id = (const char*) ZBase->lib_IdString;
-            int gf = id && strstr( id, "GFOpenZlib" ) != NULL;
-
             /* GFOpenZlib before 53.13 had its own guessed jump table, not
-             * the Aminet z.library's that these LVOs follow: don't use it */
-            if( gf && ( ZBase->lib_Version < 53
-                        || ( ZBase->lib_Version == 53 && ZBase->lib_Revision < 13 ) ) )
-            {
-                CloseLibrary( ZBase );
-                ZBase = NULL;
-            }
-            else
-            {
-                /* the calls past -270 are GFOpenZlib's own */
-                ZOwn = gf;
-                atexit( z_close );
-            }
+             * the Aminet z.library's that these LVOs follow. 53.12 still
+             * names itself "OpenZlib"; use its old table (zold_*), and the
+             * calls past -270 only on 53.13 and later. */
+            int t = gfamiga_zlib_table( (const char*) ZBase->lib_IdString,
+                                        ZBase->lib_Version, ZBase->lib_Revision );
+            ZOld = t == Z_TABLE_OLD;
+            ZOwn = t == Z_TABLE_OWN;
+            atexit( z_close );
         }
     }
 
-    return ZBase;
+    /* GFOpenZlib before 53.13 is reached only through its own table (zold_*) */
+    return ZOld ? NULL : ZBase;
+}
+
+/* GFOpenZlib before 53.13 (e.g. 53.12): its old jump table */
+static struct Library* z_old( void )
+{
+    z_base();
+    return ZOld ? ZBase : NULL;
 }
 
 #define CLOBBER "cc", "memory", "fp0", "fp1"
@@ -235,6 +239,247 @@ static struct Library* z_base( void )
         _r;                                                                                        \
     } )
 
+
+/* ---- GFOpenZlib before 53.13: its own jump table, used only when
+ * z_old() finds such a library (53.12 on most systems) ---- */
+#define Z_NOLIB Z_VERSION_ERROR
+
+static const char* zold_zlibVersion( void )
+{
+    struct Library* base = z_old();
+
+    if( !base )
+        return "0.0.0 (no z.library)";
+
+    return (const char*) Z_NONE( -30 );
+}
+
+static int zold_deflateInit_( z_streamp s, int level, const char* version, int size )
+{
+    struct Library* base = z_old();
+
+    (void) version;
+    (void) size;
+    if( !base )
+        return Z_NOLIB;
+    return (int) Z_A0D0( -36, s, level );
+}
+
+static int zold_deflate( z_streamp s, int flush )
+{
+    struct Library* base = z_old();
+
+    if( !base )
+        return Z_STREAM_ERROR;
+    return (int) Z_A0D0( -42, s, flush );
+}
+
+static int zold_deflateEnd( z_streamp s )
+{
+    struct Library* base = z_old();
+
+    if( !base )
+        return Z_STREAM_ERROR;
+    return (int) Z_A0( -48, s );
+}
+
+static int zold_inflateInit_( z_streamp s, const char* version, int size )
+{
+    struct Library* base = z_old();
+
+    (void) version;
+    (void) size;
+    if( !base )
+        return Z_NOLIB;
+    return (int) Z_A0( -54, s );
+}
+
+static int zold_inflate( z_streamp s, int flush )
+{
+    struct Library* base = z_old();
+
+    if( !base )
+        return Z_STREAM_ERROR;
+    return (int) Z_A0D0( -60, s, flush );
+}
+
+static int zold_inflateEnd( z_streamp s )
+{
+    struct Library* base = z_old();
+
+    if( !base )
+        return Z_STREAM_ERROR;
+    return (int) Z_A0( -66, s );
+}
+
+static int zold_deflateInit2_( z_streamp s, int level, int method, int windowBits, int memLevel,
+                               int strategy, const char* version, int size )
+{
+    struct Library* base = z_old();
+
+    (void) version;
+    (void) size;
+    if( !base )
+        return Z_NOLIB;
+    return (int) Z_A0D0D1D2D3D4( -72, s, level, method, windowBits, memLevel, strategy );
+}
+
+static int zold_deflateSetDictionary( z_streamp s, const Bytef* dict, uInt len )
+{
+    struct Library* base = z_old();
+
+    if( !base )
+        return Z_STREAM_ERROR;
+    return (int) Z_A0A1D0( -78, s, dict, len );
+}
+
+static int zold_deflateReset( z_streamp s )
+{
+    struct Library* base = z_old();
+
+    if( !base )
+        return Z_STREAM_ERROR;
+    return (int) Z_A0( -90, s );
+}
+
+static int zold_deflateParams( z_streamp s, int level, int strategy )
+{
+    struct Library* base = z_old();
+
+    if( !base )
+        return Z_STREAM_ERROR;
+    return (int) Z_A0D0D1( -96, s, level, strategy );
+}
+
+static uLong zold_deflateBound( z_streamp s, uLong sourceLen )
+{
+    struct Library* base = z_old();
+
+    if( !base )
+        return sourceLen + ( sourceLen >> 12 ) + ( sourceLen >> 14 ) + ( sourceLen >> 25 ) + 13;
+    return (uLong) Z_A0D0( -108, s, sourceLen );
+}
+
+static int zold_inflateInit2_( z_streamp s, int windowBits, const char* version, int size )
+{
+    struct Library* base = z_old();
+
+    (void) version;
+    (void) size;
+    if( !base )
+        return Z_NOLIB;
+    return (int) Z_A0D0( -132, s, windowBits );
+}
+
+static int zold_inflateSetDictionary( z_streamp s, const Bytef* dict, uInt len )
+{
+    struct Library* base = z_old();
+
+    if( !base )
+        return Z_STREAM_ERROR;
+    return (int) Z_A0A1D0( -138, s, dict, len );
+}
+
+static int zold_inflateSync( z_streamp s )
+{
+    struct Library* base = z_old();
+
+    if( !base )
+        return Z_STREAM_ERROR;
+    return (int) Z_A0( -150, s );
+}
+
+static int zold_inflateReset( z_streamp s )
+{
+    struct Library* base = z_old();
+
+    if( !base )
+        return Z_STREAM_ERROR;
+    return (int) Z_A0( -162, s );
+}
+
+static int zold_inflateReset2( z_streamp s, int windowBits )
+{
+    struct Library* base = z_old();
+
+    if( !base )
+        return Z_STREAM_ERROR;
+    return (int) Z_A0D0( -168, s, windowBits );
+}
+
+static int zold_compress( Bytef* dest, uLongf* destLen, const Bytef* source, uLong sourceLen )
+{
+    struct Library* base = z_old();
+
+    if( !base )
+        return Z_NOLIB;
+    return (int) Z_A0A1A2D0( -198, dest, destLen, source, sourceLen );
+}
+
+static int zold_compress2( Bytef* dest, uLongf* destLen, const Bytef* source, uLong sourceLen,
+                           int level )
+{
+    struct Library* base = z_old();
+
+    if( !base )
+        return Z_NOLIB;
+    return (int) Z_A0A1A2D0D1( -204, dest, destLen, source, sourceLen, level );
+}
+
+static uLong zold_compressBound( uLong sourceLen )
+{
+    struct Library* base = z_old();
+
+    if( !base )
+        return sourceLen + ( sourceLen >> 12 ) + ( sourceLen >> 14 ) + ( sourceLen >> 25 ) + 13;
+    return (uLong) Z_D0( -210, sourceLen );
+}
+
+static int zold_uncompress( Bytef* dest, uLongf* destLen, const Bytef* source, uLong sourceLen )
+{
+    struct Library* base = z_old();
+
+    if( !base )
+        return Z_NOLIB;
+    return (int) Z_A0A1A2D0( -216, dest, destLen, source, sourceLen );
+}
+
+static uLong zold_adler32( uLong adler, const Bytef* buf, uInt len )
+{
+    struct Library* base = z_old();
+
+    if( !base )
+        return 0;
+    return (uLong) Z_D0A0D1( -228, adler, buf, len );
+}
+
+static uLong zold_crc32( uLong crc, const Bytef* buf, uInt len )
+{
+    struct Library* base = z_old();
+
+    if( !base )
+        return 0;
+    return (uLong) Z_D0A0D1( -234, crc, buf, len );
+}
+
+static uLong zold_adler32_combine( uLong a1, uLong a2, z_off_t len2 )
+{
+    struct Library* base = z_old();
+
+    if( !base )
+        return 0;
+    return (uLong) Z_D0D1D2( -240, a1, a2, len2 );
+}
+
+static uLong zold_crc32_combine( uLong c1, uLong c2, z_off_t len2 )
+{
+    struct Library* base = z_old();
+
+    if( !base )
+        return 0;
+    return (uLong) Z_D0D1D2( -246, c1, c2, len2 );
+}
+
 #define BASE_OR( fail )                                                                            \
     struct Library* base = z_base();                                                               \
     if( !base )                                                                                    \
@@ -256,11 +501,17 @@ static int z_version_ok( const char* version, int stream_size )
 
 const char* zlibVersion( void )
 {
+    if( z_old() )
+        return zold_zlibVersion();
+
     return ZLIB_VERSION;
 }
 
 int deflateInit_( z_streamp strm, int level, const char* version, int stream_size )
 {
+    if( z_old() )
+        return zold_deflateInit_( strm, level, version, stream_size );
+
     if( !z_version_ok( version, stream_size ) )
         return Z_VERSION_ERROR;
 
@@ -273,18 +524,27 @@ int deflateInit_( z_streamp strm, int level, const char* version, int stream_siz
 
 int deflate( z_streamp strm, int flush )
 {
+    if( z_old() )
+        return zold_deflate( strm, flush );
+
     BASE_OR( Z_STREAM_ERROR )
     return (int) Z_A0D0( -42, strm, flush );
 }
 
 int deflateEnd( z_streamp strm )
 {
+    if( z_old() )
+        return zold_deflateEnd( strm );
+
     BASE_OR( Z_STREAM_ERROR )
     return (int) Z_A0( -48, strm );
 }
 
 int inflateInit_( z_streamp strm, const char* version, int stream_size )
 {
+    if( z_old() )
+        return zold_inflateInit_( strm, version, stream_size );
+
     if( !z_version_ok( version, stream_size ) )
         return Z_VERSION_ERROR;
 
@@ -297,12 +557,18 @@ int inflateInit_( z_streamp strm, const char* version, int stream_size )
 
 int inflate( z_streamp strm, int flush )
 {
+    if( z_old() )
+        return zold_inflate( strm, flush );
+
     BASE_OR( Z_STREAM_ERROR )
     return (int) Z_A0D0( -60, strm, flush );
 }
 
 int inflateEnd( z_streamp strm )
 {
+    if( z_old() )
+        return zold_inflateEnd( strm );
+
     BASE_OR( Z_STREAM_ERROR )
     return (int) Z_A0( -66, strm );
 }
@@ -310,6 +576,10 @@ int inflateEnd( z_streamp strm )
 int deflateInit2_( z_streamp strm, int level, int method, int windowBits, int memLevel,
                    int strategy, const char* version, int stream_size )
 {
+    if( z_old() )
+        return zold_deflateInit2_( strm, level, method, windowBits, memLevel, strategy, version,
+                                   stream_size );
+
     if( !z_version_ok( version, stream_size ) )
         return Z_VERSION_ERROR;
 
@@ -322,6 +592,9 @@ int deflateInit2_( z_streamp strm, int level, int method, int windowBits, int me
 
 int deflateSetDictionary( z_streamp strm, const Bytef* dictionary, uInt dictLength )
 {
+    if( z_old() )
+        return zold_deflateSetDictionary( strm, dictionary, dictLength );
+
     BASE_OR( Z_STREAM_ERROR )
     return (int) Z_A0A1D0( -78, strm, dictionary, dictLength );
 }
@@ -334,12 +607,18 @@ int deflateCopy( z_streamp dest, z_streamp source )
 
 int deflateReset( z_streamp strm )
 {
+    if( z_old() )
+        return zold_deflateReset( strm );
+
     BASE_OR( Z_STREAM_ERROR )
     return (int) Z_A0( -90, strm );
 }
 
 int deflateParams( z_streamp strm, int level, int strategy )
 {
+    if( z_old() )
+        return zold_deflateParams( strm, level, strategy );
+
     BASE_OR( Z_STREAM_ERROR )
     return (int) Z_A0D0D1( -96, strm, level, strategy );
 }
@@ -352,6 +631,9 @@ int deflateTune( z_streamp strm, int good_length, int max_lazy, int nice_length,
 
 uLong deflateBound( z_streamp strm, uLong sourceLen )
 {
+    if( z_old() )
+        return zold_deflateBound( strm, sourceLen );
+
     struct Library* base = z_base();
 
     if( !base ) /* zlib's own bound, only ever used to size a buffer */
@@ -380,6 +662,9 @@ int deflateSetHeader( z_streamp strm, gz_headerp head )
 
 int inflateInit2_( z_streamp strm, int windowBits, const char* version, int stream_size )
 {
+    if( z_old() )
+        return zold_inflateInit2_( strm, windowBits, version, stream_size );
+
     if( !z_version_ok( version, stream_size ) )
         return Z_VERSION_ERROR;
 
@@ -392,6 +677,9 @@ int inflateInit2_( z_streamp strm, int windowBits, const char* version, int stre
 
 int inflateSetDictionary( z_streamp strm, const Bytef* dictionary, uInt dictLength )
 {
+    if( z_old() )
+        return zold_inflateSetDictionary( strm, dictionary, dictLength );
+
     BASE_OR( Z_STREAM_ERROR )
     return (int) Z_A0A1D0( -108, strm, dictionary, dictLength );
 }
@@ -404,6 +692,9 @@ int inflateGetDictionary( z_streamp strm, Bytef* dictionary, uInt* dictLength )
 
 int inflateSync( z_streamp strm )
 {
+    if( z_old() )
+        return zold_inflateSync( strm );
+
     BASE_OR( Z_STREAM_ERROR )
     return (int) Z_A0( -144, strm );
 }
@@ -416,12 +707,18 @@ int inflateCopy( z_streamp dest, z_streamp source )
 
 int inflateReset( z_streamp strm )
 {
+    if( z_old() )
+        return zold_inflateReset( strm );
+
     BASE_OR( Z_STREAM_ERROR )
     return (int) Z_A0( -114, strm );
 }
 
 int inflateReset2( z_streamp strm, int windowBits )
 {
+    if( z_old() )
+        return zold_inflateReset2( strm, windowBits );
+
     BASE_OR( Z_STREAM_ERROR )
     return (int) Z_A0D0( -252, strm, windowBits );
 }
@@ -460,18 +757,27 @@ uLong zlibCompileFlags( void )
 
 int compress( Bytef* dest, uLongf* destLen, const Bytef* source, uLong sourceLen )
 {
+    if( z_old() )
+        return zold_compress( dest, destLen, source, sourceLen );
+
     BASE_OR( Z_MEM_ERROR )
     return (int) Z_A0A1A2D0( -120, dest, destLen, source, sourceLen );
 }
 
 int compress2( Bytef* dest, uLongf* destLen, const Bytef* source, uLong sourceLen, int level )
 {
+    if( z_old() )
+        return zold_compress2( dest, destLen, source, sourceLen, level );
+
     BASE_OR( Z_MEM_ERROR )
     return (int) Z_A0A1A2D0D1( -222, dest, destLen, source, sourceLen, level );
 }
 
 uLong compressBound( uLong sourceLen )
 {
+    if( z_old() )
+        return zold_compressBound( sourceLen );
+
     struct Library* base = z_base();
 
     if( !base )
@@ -482,6 +788,9 @@ uLong compressBound( uLong sourceLen )
 
 int uncompress( Bytef* dest, uLongf* destLen, const Bytef* source, uLong sourceLen )
 {
+    if( z_old() )
+        return zold_uncompress( dest, destLen, source, sourceLen );
+
     BASE_OR( Z_MEM_ERROR )
     return (int) Z_A0A1A2D0( -126, dest, destLen, source, sourceLen );
 }
@@ -552,6 +861,9 @@ uLong adler32_z( uLong adler, const Bytef* buf, z_size_t len )
 
 uLong adler32( uLong adler, const Bytef* buf, uInt len )
 {
+    if( z_old() )
+        return zold_adler32( adler, buf, len );
+
     return adler32_z( adler, buf, len );
 }
 
@@ -577,17 +889,26 @@ uLong crc32_z( uLong crc, const Bytef* buf, z_size_t len )
 
 uLong crc32( uLong crc, const Bytef* buf, uInt len )
 {
+    if( z_old() )
+        return zold_crc32( crc, buf, len );
+
     return crc32_z( crc, buf, len );
 }
 
 uLong adler32_combine( uLong adler1, uLong adler2, z_off_t len2 )
 {
+    if( z_old() )
+        return zold_adler32_combine( adler1, adler2, len2 );
+
     BASE_OR( 0xffffffffUL )
     return (uLong) Z_D0D1D2( -210, adler1, adler2, len2 );
 }
 
 uLong crc32_combine( uLong crc1, uLong crc2, z_off_t len2 )
 {
+    if( z_old() )
+        return zold_crc32_combine( crc1, crc2, len2 );
+
     BASE_OR( 0 )
     return (uLong) Z_D0D1D2( -216, crc1, crc2, len2 );
 }
