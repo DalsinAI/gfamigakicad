@@ -16,7 +16,9 @@ TC=${TC:?}; WORK=${WORK:?}; DEPS=${DEPS:?}; NDK=${NDK:-}
 DL=${DL:-$WORK/dl}; JOBS=${JOBS:-$(nproc)}
 OUT=$WORK/curl; SRC=$WORK/curl-src
 mkdir -p "$DL" "$OUT/include" "$OUT/lib" "$SRC"
-CPU="-m68040 -noixemul${NDK:+ -idirafter $NDK}"
+# open6 + C99: ULONG is uint32_t, HOOKFUNC is unsigned long, so the
+# OpenTLS hook assignment is -Wincompatible-pointer-types (an error).
+CPU="-m68040 -noixemul -Wno-error=incompatible-pointer-types -Wno-incompatible-pointer-types${NDK:+ -idirafter $NDK}"
 # gfopencurl's script takes the compiler root (holding prefix/) and CPU flags
 export OS32_GCC16="$(dirname "$TC")" OS32_CPU_FLAGS="$CPU" JOBS
 [ "$OS32_GCC16/prefix" = "$TC" ] || { echo "TC must be <root>/prefix" >&2; exit 1; }

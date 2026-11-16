@@ -64,6 +64,13 @@ if [ "$(cat "$WX/.commit" 2>/dev/null || true)" != "$TOOLKIT_COMMIT" ]; then
         git -C "$S" fetch -q --depth 1 "$TOOLKIT_REPO" "$TOOLKIT_COMMIT"; git -C "$S" checkout -q FETCH_HEAD
     fi
     mkdir -p "$WX"
+    # open6 + C99 NDK: ULONG is uint32_t, HOOKFUNC is unsigned long. The
+    # OpenTLS hook assignment is then an error on this compiler. The
+    # toolkit's curl script sets OS32_CPU_FLAGS itself, so the flag is
+    # added there.
+    if ! grep -q incompatible-pointer-types "$S/scripts/build-curl.sh"; then
+        sed -i 's/CPU="-m68040 -noixemul/CPU="-m68040 -noixemul -Wno-error=incompatible-pointer-types -Wno-incompatible-pointer-types/' "$S/scripts/build-curl.sh"
+    fi
     rc=0
     STOVE="$STOVE" WORK="$WX" OUT="$WX/out" JOBS=$JOBS timeout "$(left)" sh "$S/build-amiga.sh" \
         > "$WORK/toolkit.log" 2>&1 || rc=$?
