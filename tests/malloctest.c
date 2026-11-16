@@ -57,6 +57,17 @@ int main(int argc, char **argv)
     clock_t t0, t1, t2, t3;
 
     if ( !ptr || !len ) { printf("FAIL no table\n"); return 20; }
+
+    /* a size that wraps n+header on 32-bit must be refused, not taken as small */
+    if ( sizeof(size_t) <= 4 )
+    {
+        if ( malloc((size_t)-1) != NULL )
+        { printf("FAIL wrap malloc(-1)\n"); return 20; }
+        if ( malloc((size_t)0xFFFFFFF0UL) != NULL )
+        { printf("FAIL wrap malloc(0xFFFFFFF0)\n"); return 20; }
+        printf("wrap: refused\n");
+    }
+
     printf("malloctest: %lu operations, %lu live slots\n", n, live);
     fflush(stdout);
 

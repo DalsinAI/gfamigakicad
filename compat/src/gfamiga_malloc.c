@@ -10,9 +10,12 @@
  * Here, small requests (up to 2 KB) come from size classes: each class has
  * a free list, refilled from 64 KB arenas taken from exec in one go, so
  * malloc and free are a handful of instructions. Larger requests go straight
- * to AllocMem with a small header. A 4-byte word in front of every block
- * says which it is, so free() never searches. Everything is handed back to
- * exec at exit (AmigaOS does not do that for us).
+ * to AllocMem with a small header. An 8-byte header sits in front of every
+ * small block (the class word in the last 4 bytes), so the pointer handed
+ * back is 8-aligned. A word in front of a large block says which it is, so
+ * free() never searches. Everything is handed back to exec at exit
+ * (AmigaOS does not do that for us). Arenas and large blocks are taken
+ * from Fast RAM first, then from any memory if that fails.
  *
  * Small blocks freed go back on their class's list for reuse, not to exec,
  * so a program's peak small-object memory stays held until it quits.
@@ -30,13 +33,14 @@
 #include <stddef.h>
 #include <string.h>
 #include <errno.h>
+#include "gfamiga_malloc_size.h"
 
 extern struct ExecBase *SysBase;
 
 #define ARENA_SIZE  (64 * 1024)
-#define SMALL_MAX   2048            /* largest chunk (header included) */
-#define HDR         4               /* the word in front of each block */
-#define LARGE_HDR   16              /* MinNode, pad, then the word */
+#define SMALL_MAX   GFAMIGA_SMALL_MAX /* largest chunk (header included) */
+#define HDR         GFAMIGA_HDR       /* 8-byte header; user pointer is 8-aligned */
+#define LARGE_HDR   16                /* MinNode, pad, then the word */
 
 /* chunk sizes, header included, multiples of 8: fine steps where most
  * requests are (C++ nodes, strings), coarser further up */
@@ -99,6 +103,15 @@ void __exitmalloc(void)
 __asm__(".section .list___INIT_LIST__,\"aw\"\n\t.long ___initmalloc\n\t.long 78\n\t.text");
 __asm__(".section .list___EXIT_LIST__,\"aw\"\n\t.long ___exitmalloc\n\t.long 78\n\t.text");
 
+/* Fast RAM first; fall back to any memory if that is exhausted. */
+static void *alloc_mem(ULONG size)
+{
+    void *a = AllocMem(size, MEMF_FAST);
+    if ( !a )
+        a = AllocMem(size, MEMF_ANY);
+    return a;
+}
+
 static void *small_alloc(unsigned c)
 {
     struct FreeChunk *f = free_list[c];
@@ -116,7 +129,7 @@ static void *small_alloc(unsigned c)
         if ( bump + sz > bump_end )
         {
             /* a new arena; the old one's tail (under 2 KB) is left unused */
-            UBYTE *a = AllocMem(ARENA_SIZE, MEMF_ANY);
+            UBYTE *a = alloc_mem(ARENA_SIZE);
             if ( !a )
                 return NULL;
             AddTail((struct List *)&arenas, (struct Node *)a);
@@ -126,7 +139,7 @@ static void *small_alloc(unsigned c)
         p = bump;
         bump += sz;
     }
-    *(ULONG *)p = c;
+    *(ULONG *)(p + HDR - 4) = c;
     return p + HDR;
 }
 
@@ -137,7 +150,7 @@ static void *large_alloc(size_t n)
 
     if ( total < n )
         return NULL;
-    b = AllocMem(total, MEMF_ANY);
+    b = alloc_mem(total);
     if ( !b )
         return NULL;
     AddTail((struct List *)&large, (struct Node *)b);
@@ -152,8 +165,10 @@ void *malloc(size_t n)
     if ( !ready )
         return NULL;
     ObtainSemaphore(&lock);
-    if ( n + HDR <= SMALL_MAX )
-        p = small_alloc(class_of[(n + HDR + 7) >> 3]);
+    /* n <= SMALL_MAX - HDR, not n + HDR <= SMALL_MAX: the latter wraps
+     * on a 32-bit size_t and would index class_of out of range. */
+    if ( n <= (size_t)(SMALL_MAX - HDR) )
+        p = small_alloc(class_of[gfamiga_malloc_class_index((uint32_t)n)]);
     else
         p = large_alloc(n);
     ReleaseSemaphore(&lock);
