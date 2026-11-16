@@ -26,6 +26,11 @@ a host C++ compiler, lha or zip, and no stove build cache.
   wx webrequest file so the toolkit can compile against this NDK.
 - build-deps.sh compiles gfamiga_malloc.c with compat/include on the
   search path, so the size-class header is found.
+- This compiler's stove has no GFOpenGPU developer kit, so the toolkit
+  SDK has no OpenGL canvas library even though setup.h enables
+  wxUSE_GLCANVAS. A no-op wxGLCanvas is linked: IsDisplaySupported is
+  false and nothing is drawn through it. Drawing panels use the Cairo
+  canvas, as already documented.
 
 Still open from the completeness review: no official symbol or
 footprint libraries in the package; ODB++ export can still hang on
