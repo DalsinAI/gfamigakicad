@@ -19,7 +19,8 @@ if(KC_SPECS)
   set(KC_FLAGS "${KC_FLAGS} -specs=${KC_SPECS}")
 endif()
 set(CMAKE_C_FLAGS_INIT   "${KC_FLAGS} ${KC_CFLAGS}")
-set(CMAKE_CXX_FLAGS_INIT "${KC_FLAGS} ${KC_CFLAGS}")
+# this NDK's STRPTR is unsigned char*; POSIX C++ expects char*
+set(CMAKE_CXX_FLAGS_INIT "${KC_FLAGS} -fpermissive ${KC_CFLAGS}")
 set(CMAKE_EXE_LINKER_FLAGS_INIT "${KC_FLAGS}")
 # GCC's libatomic (std::atomic exchange, libgit2) and libnix's bsdsocket stubs
 # KC_EXTRA_LIBS (a cache variable): what the static platform libraries need

@@ -20,6 +20,10 @@ a host C++ compiler, lha or zip, and no stove build cache.
   libgit2 now hash the patch files, so a later edit is not skipped.
 - malloc refuses a size that would wrap on 32-bit, returns 8-aligned
   small blocks, and takes Fast RAM first. Host test: 11 of 11.
+- The open6 NDK in this compiler treats STRPTR as unsigned char*, and
+  proto/bsdsocket.h aliases m_next through sys/mbuf.h. The Amiga build
+  passes -fpermissive to C++ and drops those aliases in the toolkit's
+  wx webrequest file so the toolkit can compile against this NDK.
 
 Still open from the completeness review: no official symbol or
 footprint libraries in the package; ODB++ export can still hang on

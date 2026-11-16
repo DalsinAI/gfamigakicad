@@ -71,6 +71,13 @@ if [ "$(cat "$WX/.commit" 2>/dev/null || true)" != "$TOOLKIT_COMMIT" ]; then
     if ! grep -q incompatible-pointer-types "$S/scripts/build-curl.sh"; then
         sed -i 's/CPU="-m68040 -noixemul/CPU="-m68040 -noixemul -Wno-error=incompatible-pointer-types -Wno-incompatible-pointer-types/' "$S/scripts/build-curl.sh"
     fi
+    # This NDK's <netdb.h> uses STRPTR (unsigned char*) for hostent names,
+    # and proto/bsdsocket.h pulls in sys/mbuf.h aliases (m_next becomes
+    # m_hdr.mh_next) that break wx/hashmap.h. The helper patches the wx
+    # tree and the Makefile just before make, so a configured cache is
+    # not reconfigured.
+    export GFAMIGA_NDK_FIXES="$HERE/scripts/amiga-wx-ndk-fixes.sh"
+    sh "$GFAMIGA_NDK_FIXES" --hook-toolkit-scripts "$S"
     rc=0
     STOVE="$STOVE" WORK="$WX" OUT="$WX/out" JOBS=$JOBS timeout "$(left)" sh "$S/build-amiga.sh" \
         > "$WORK/toolkit.log" 2>&1 || rc=$?
