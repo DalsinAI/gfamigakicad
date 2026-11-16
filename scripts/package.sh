@@ -12,6 +12,12 @@ for p in kicad kicad-cli eeschema pcbnew gerbview pl_editor bitmap2component pcb
     [ -f "$BIN/$p" ] && "$TC/bin/m68k-amigaos-strip" -o "$D/Programs/$p" "$BIN/$p"
 done
 [ -d "$BIN/share" ] && cp -r "$BIN/share" "$D/Programs/"
+# Licence files and the source offer travel with the programs
+HERE=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+for f in COPYING LICENSE.MIT THIRD-PARTY.md; do
+    [ -f "$HERE/$f" ] || { echo "package.sh: missing $HERE/$f" >&2; exit 1; }
+    cp "$HERE/$f" "$D/"
+done
 cat > "$D/ReadMe.txt" <<TXT
 GFAmigaKiCad $VERSION
 KiCad 10.0.8 for AmigaOS 3.2, 68040, on the GFOpenWX Toolkit.
@@ -29,6 +35,25 @@ No Python plugins, no 3D view, no simulator, no STEP export yet.
 Install: in the Shell, CD to this drawer and Execute Install (copies to Work:KiCad, or give
 another drawer: Execute Install DH1:Apps/KiCad).
 Give the programs 1 MB of stack (Stack 1000000) when started from the Shell.
+
+Licence: KiCad is GPL-3.0-or-later. COPYING in this drawer is the GNU
+GPL version 3. The AmiCradle Team's original port files are also
+available under LICENSE.MIT. THIRD-PARTY.md names the other works
+linked into the programs (wxWidgets, curl, Boost, protobuf, libgit2,
+zstd and others).
+
+Source: this package is a binary of KiCad 10.0.8 for AmigaOS 3.
+Corresponding source is offered at
+
+  https://github.com/DalsinAI/gfamigakicad
+
+and the upstream KiCad 10.0.8 tarball
+
+  https://gitlab.com/kicad/code/kicad/-/archive/10.0.8/kicad-10.0.8.tar.gz
+  SHA-256: 0723fedd82522fcd33cb9d8ad53979a35f6e4d3ec627c4e2e2708dfcba360574
+
+The repository's deps.lock names every other source the build fetches,
+with its SHA-256 or commit.
 
 Designed, tested and delivered by The AmigaChrome Team.
 Copyright (c) 2026 AmiCradle Team. KiCad is GPL-3.0-or-later.
@@ -48,6 +73,7 @@ IF NOT EXISTS "$kcdest"
 ENDIF
 Copy Programs/#? "$kcdest" ALL CLONE QUIET
 Copy ReadMe.txt "$kcdest" CLONE QUIET
+Copy COPYING LICENSE.MIT THIRD-PARTY.md "$kcdest" CLONE QUIET
 Echo "GFAmigaKiCad is in $kcdest"
 UnSet kcdest
 TXT
