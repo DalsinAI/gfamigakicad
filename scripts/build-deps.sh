@@ -65,13 +65,21 @@ unpack() { # tarball -> $WORK/src/<topdir>
     echo "$WORK/src/$top"
 }
 
-patch_tree() { # name dir: apply patches/<name>/*.patch once
+# 16-character hash of patches/<name>, or "none". Used in stamps so a later
+# edit of the patches is not skipped on a reused source tree.
+patch_sum() {
+    [ -d "$HERE/patches/$1" ] || { echo none; return 0; }
+    find "$HERE/patches/$1" -type f | sort | xargs cat | sha256sum | cut -c1-16
+}
+
+patch_tree() { # name dir: apply patches/<name>/*.patch when the set has changed
     [ -d "$HERE/patches/$1" ] || return 0
-    [ -f "$2/.gfamiga-patched" ] && return 0
+    PSUM=$(patch_sum "$1")
+    [ "$(cat "$2/.gfamiga-patched" 2>/dev/null || true)" = "$PSUM" ] && return 0
     for p in "$HERE/patches/$1"/*.patch; do
         patch -d "$2" -p1 -s --forward < "$p" || { echo "deps: $p does not apply" >&2; exit 1; }
     done
-    touch "$2/.gfamiga-patched"
+    echo "$PSUM" > "$2/.gfamiga-patched"
 }
 
 done_for() { [ "$(cat "$DEPS/.$1" 2>/dev/null || true)" = "$2" ]; }
@@ -141,8 +149,11 @@ if ! done_for boost "$GFOPENBOOST_SHA256"; then
 fi
 
 # ---- protobuf 3.21 (the last without Abseil): host protoc and the m68k library
-if ! done_for protobuf "$PROTOBUF_SHA256"; then
-    S=$(unpack "$(fetch protobuf "$PROTOBUF_URL" "$PROTOBUF_SHA256")"); patch_tree protobuf "$S"
+if ! done_for protobuf "$PROTOBUF_SHA256-$(patch_sum protobuf)"; then
+    f=$(fetch protobuf "$PROTOBUF_URL" "$PROTOBUF_SHA256")
+    top=$(tar tf "$f" | head -1 | cut -d/ -f1)
+    rm -rf "$WORK/src/$top"
+    S=$(unpack "$f"); patch_tree protobuf "$S"
     cmake -S "$S" -B "$WORK/obj/protoc-host" -G Ninja -DCMAKE_BUILD_TYPE=Release \
         -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_WITH_ZLIB=OFF -DCMAKE_INSTALL_PREFIX="$HOST" >/dev/null
     cmake --build "$WORK/obj/protoc-host" -j"$JOBS" --target protoc >/dev/null
@@ -157,11 +168,12 @@ if ! done_for protobuf "$PROTOBUF_SHA256"; then
     cmake --install "$WORK/obj/protobuf" >/dev/null 2>&1 || {
         cp "$WORK/obj/protobuf/libprotobuf.a" "$DEPS/lib/"
         (cd "$S/src" && find google \( -name '*.h' -o -name '*.inc' -o -name '*.proto' \) -print | tar cf - -T -) | tar xf - -C "$DEPS/include"; }
-    mark protobuf "$PROTOBUF_SHA256"; log "protobuf done"
+    mark protobuf "$PROTOBUF_SHA256-$(patch_sum protobuf)"; log "protobuf done"
 fi
 
 # ---- libgit2: local repositories only (no HTTPS, no SSH)
-if ! done_for libgit2 "$LIBGIT2_COMMIT-o3"; then
+if ! done_for libgit2 "$LIBGIT2_COMMIT-$(patch_sum libgit2)"; then
+    rm -rf "$WORK/src/libgit2"
     S=$(gitfetch libgit2 "$LIBGIT2_REPO" "$LIBGIT2_COMMIT"); patch_tree libgit2 "$S"
     cmake -S "$S" -B "$WORK/obj/libgit2" -G Ninja -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
         -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS_RELEASE="-O2 -DNO_MMAP" -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF -DCMAKE_C_STANDARD=99 -DCMAKE_C_EXTENSIONS=ON \
@@ -172,7 +184,7 @@ if ! done_for libgit2 "$LIBGIT2_COMMIT-o3"; then
         -DCMAKE_INSTALL_PREFIX="$DEPS" >/dev/null
     cmake --build "$WORK/obj/libgit2" -j"$JOBS" >/dev/null
     cmake --install "$WORK/obj/libgit2" >/dev/null
-    mark libgit2 "$LIBGIT2_COMMIT-o3"; log "libgit2 done"
+    mark libgit2 "$LIBGIT2_COMMIT-$(patch_sum libgit2)"; log "libgit2 done"
 fi
 
 log "all done: $(ls "$DEPS/lib" | tr '\n' ' ')"
