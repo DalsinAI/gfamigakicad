@@ -3,9 +3,9 @@
 KICAD_VERSION=10.0.8
 KICAD_URL=https://gitlab.com/kicad/code/kicad/-/archive/10.0.8/kicad-10.0.8.tar.gz
 KICAD_SHA256=0723fedd82522fcd33cb9d8ad53979a35f6e4d3ec627c4e2e2708dfcba360574
-# GFOpenBoost, the shared Boost SDK: the v1.89.0-rc1 pre-release
-GFOPENBOOST_URL=https://github.com/DalsinAI/gfopenboost/releases/download/v1.89.0-rc1/gfopenboost-1.89.0-sdk.tar.xz
-GFOPENBOOST_SHA256=a6cad796bc9f7ac84e81704bef6553f63588255eb7012512d0359654507be52a
+# GFOpenBoost, the shared Boost SDK: the v1.89.0-rc3 pre-release
+GFOPENBOOST_URL=https://github.com/DalsinAI/gfopenboost/releases/download/v1.89.0-rc3/gfopenboost-1.89.0-sdk.tar.xz
+GFOPENBOOST_SHA256=d9ebfc56ed5922c9fc15450366eb0426e9f19a016dd8bbb2fc46da2c99ff3f4b
 ZSTD_URL=https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz
 ZSTD_SHA256=eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3
 PROTOBUF_URL=https://github.com/protocolbuffers/protobuf/releases/download/v21.12/protobuf-cpp-3.21.12.tar.gz
@@ -20,14 +20,17 @@ NGSPICE_SHA256=894e649651f1838a14095e5a5439e7d3aa63e87ede14d283173fda4fcdef675f
 OPENSDK_REPO=https://github.com/DalsinAI/gfopensdk
 OPENSDK_COMMIT=60797bf2d7d7fb63c0e8169fb5a08cdcc35f180c
 
-# GFOpenWX Toolkit SDK (WXSDK): main 9207f7f (toolbar + zlib fixes #13 #14), built in the job until its next pre-release
+# GFOpenWX Toolkit: 1.0-rc4 (0dc65bc, z.library 53.12 fix). The 1.0-rc4
+# release ships the runtime library package, not an SDK tarball, so the
+# build compiles the toolkit from this commit.
 TOOLKIT_REPO=https://github.com/DalsinAI/gfopenwxtoolkit
-TOOLKIT_COMMIT=9207f7f33bb8323e166aa9d6ef89d9600f091d33
+TOOLKIT_COMMIT=0dc65bca5f71d10f15f078ddac04b5d24829a155
 TOOLKIT_SDK_URL=
 TOOLKIT_SDK_SHA256=
 
-# libcurl (scripts/build-curl.sh): gfopencurl's build, with gfopentls's headers
-GFOPENCURL_COMMIT=ed7fe173a57e74dbe83a455f7fdb3ce7bf03d3be
+# libcurl (scripts/build-curl.sh): gfopencurl's build, with gfopentls's headers.
+# 07e59ed: the GFOpenTLS hook puts back the program's A4.
+GFOPENCURL_COMMIT=07e59ed451ff325bf8c4772a02ffba0596064920
 GFOPENTLS_COMMIT=aa6f6a5a34a0558351ece25f29066f51a4e85499
 PLAT_CURL_URL=https://github.com/curl/curl/releases/download/curl-8_22_0/curl-8.22.0.tar.xz
 PLAT_CURL_SHA256=f7ef3ae8a22e521f289803fe93543eb64c329b58aa73a9e224dfd915a2a5f4f7
