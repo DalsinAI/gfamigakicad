@@ -24,6 +24,8 @@ a host C++ compiler, lha or zip, and no stove build cache.
   proto/bsdsocket.h aliases m_next through sys/mbuf.h. The Amiga build
   passes -fpermissive to C++ and drops those aliases in the toolkit's
   wx webrequest file so the toolkit can compile against this NDK.
+- build-deps.sh compiles gfamiga_malloc.c with compat/include on the
+  search path, so the size-class header is found.
 
 Still open from the completeness review: no official symbol or
 footprint libraries in the package; ODB++ export can still hang on
