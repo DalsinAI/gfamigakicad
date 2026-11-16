@@ -24,8 +24,10 @@ set(CMAKE_EXE_LINKER_FLAGS_INIT "${KC_FLAGS}")
 # GCC's libatomic (std::atomic exchange, libgit2) and libnix's bsdsocket stubs
 # KC_EXTRA_LIBS (a cache variable): what the static platform libraries need
 # after them (cairo's pixman, png, fontconfig, expat; curl's nghttp2...)
-set(CMAKE_C_STANDARD_LIBRARIES   "${KC_EXTRA_LIBS} -latomic -lsocket")
-set(CMAKE_CXX_STANDARD_LIBRARIES "${KC_EXTRA_LIBS} -latomic -lsocket")
+# open6's libgcc unwind for C++ refers to pthread; a C++ program does
+# not link without it (the toolkit already passes -lpthread via wx-config)
+set(CMAKE_C_STANDARD_LIBRARIES   "${KC_EXTRA_LIBS} -latomic -lsocket -lpthread")
+set(CMAKE_CXX_STANDARD_LIBRARIES "${KC_EXTRA_LIBS} -latomic -lsocket -lpthread")
 # where target headers and libraries are found: the compiler's, our built
 # dependencies, and KC_ROOTS (more prefixes, separated by ;)
 set(CMAKE_FIND_ROOT_PATH "${TC}/m68k-amigaos" "$ENV{DEPS_PREFIX}" $ENV{KC_ROOTS})
