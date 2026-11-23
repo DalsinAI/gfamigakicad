@@ -18,7 +18,7 @@ check() {
     fi
 }
 
-check "toolkit is 1.0-rc4 (0dc65bc)" "$TOOLKIT_COMMIT" "0dc65bca5f71d10f15f078ddac04b5d24829a155"
+check "toolkit is main 2b2db78 (GFOpenLayout UI through gfopenlayout.library)" "$TOOLKIT_COMMIT" "2b2db788892b0379438ae7201821b93789610861"
 check "gfopencurl is the A4 TLS-hook fix (07e59ed)" "$GFOPENCURL_COMMIT" "07e59ed451ff325bf8c4772a02ffba0596064920"
 check "GFOpenBoost is v1.89.0-rc3" "$GFOPENBOOST_SHA256" "d9ebfc56ed5922c9fc15450366eb0426e9f19a016dd8bbb2fc46da2c99ff3f4b"
 case "$GFOPENBOOST_URL" in

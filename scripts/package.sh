@@ -26,7 +26,8 @@ Programs: eeschema (schematics), pcbnew (boards), gerbview, pl_editor
 (drawing sheets), pcb_calculator, bitmap2component, kicad (project
 manager) and kicad-cli.
 
-Needs in LIBS: gfopenfont.library, gfopengpu.library (0.18 or later),
+Needs in LIBS: gfopenlayout.library (12 or later; GFOffice Libs ships 25),
+gfopenfont.library, gfopengpu.library (0.18 or later),
 z.library, bsdsocket.library for network use.
 Each editor is a whole program (AmigaOS has no shared object loading), so
 the editors do not open each other from inside one another yet.

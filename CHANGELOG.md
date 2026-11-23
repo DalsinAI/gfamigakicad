@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Toolkit pin: GFOpenWX Toolkit main 2b2db78. Its GFOpenLayout UI now
+  comes from gfopenlayout.library instead of being compiled in, so KiCad
+  needs gfopenlayout.library 12 or later in LIBS: (GFOffice Libs ships 25).
+  Without it KiCad says so and stops. Host test: pins_test.sh.
+
 ## 0.1.0-RC5
 
 Source in this repository, 16 November 2026. A new LhA has not been

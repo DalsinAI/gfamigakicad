@@ -34,6 +34,7 @@ other from inside one another yet.
 
 In `LIBS:`:
 
+- `gfopenlayout.library` 12 or later: the GFOpenLayout windows come from it (GFOffice Libs ships 25). Without it KiCad says so and stops.
 - `gfopenfont.library`
 - `gfopengpu.library` 0.18 or later (without it the canvas stays empty)
 - `z.library` (GFOpenZlib; 53.12 and 53.13 or later are both used
