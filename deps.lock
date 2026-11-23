@@ -24,7 +24,7 @@ OPENSDK_COMMIT=60797bf2d7d7fb63c0e8169fb5a08cdcc35f180c
 # release ships the runtime library package, not an SDK tarball, so the
 # build compiles the toolkit from this commit.
 TOOLKIT_REPO=https://github.com/DalsinAI/gfopenwxtoolkit
-TOOLKIT_COMMIT=0dc65bca5f71d10f15f078ddac04b5d24829a155
+TOOLKIT_COMMIT=2b2db788892b0379438ae7201821b93789610861   # toolkit main: GFOpenLayout UI through gfopenlayout.library 12+ (gfopenwxtoolkit PR 1)
 TOOLKIT_SDK_URL=
 TOOLKIT_SDK_SHA256=
 
